@@ -1,12 +1,15 @@
 import { useParams, useNavigate, Link } from "react-router-dom";
+import { useRef } from "react";
+import { useReactToPrint } from "react-to-print";
 import { ArrowLeft, Download, Send, CheckCircle, XCircle, Edit, ArrowRight, FileText, Clock, Building, User, Calendar } from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Badge } from "@/components/ui/badge";
-import { useQuote, useQuoteItems, useUpdateQuoteStatus, useDeleteQuote } from "@/hooks/useCPQ";
+import { useQuote, useQuoteItems, useUpdateQuoteStatus } from "@/hooks/useCPQ";
 import { format } from "date-fns";
 import { Separator } from "@/components/ui/separator";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/components/ui/table";
+import { QuotePDFTemplate } from "@/components/cpq/QuotePDFTemplate";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   draft: { label: "Draft", color: "bg-muted text-muted-foreground" },
@@ -21,10 +24,17 @@ const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
 export default function QuoteDetailPage() {
   const { id } = useParams();
   const navigate = useNavigate();
+  const componentRef = useRef<HTMLDivElement>(null);
 
   const { data: quote, isLoading } = useQuote(id || "");
   const { data: quoteItems } = useQuoteItems(id || "");
   const updateStatusMutation = useUpdateQuoteStatus();
+
+  // PDF Print Logic
+  const handlePrint = useReactToPrint({
+    contentRef: componentRef,
+    documentTitle: `Quote_${quote?.quote_number || "Draft"}`,
+  });
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(value);
@@ -49,7 +59,7 @@ export default function QuoteDetailPage() {
     );
   }
 
-  // --- CALCULATION LOGIC TO MATCH BUILDER ---
+  // Calculation Logic for UI Consistency
   const grossAmount = quoteItems?.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0) || 0;
   const totalItemDiscounts = quoteItems?.reduce((sum, item) => {
     return sum + (item.quantity * item.unit_price * (item.discount_percent / 100));
@@ -94,7 +104,7 @@ export default function QuoteDetailPage() {
               </Button>
             </>
           )}
-          <Button variant="outline">
+          <Button variant="outline" onClick={handlePrint}>
             <Download className="h-4 w-4 mr-2" />Export PDF
           </Button>
         </div>
@@ -237,6 +247,15 @@ export default function QuoteDetailPage() {
             </CardContent>
           </Card>
         </div>
+      </div>
+
+      {/* Hidden Print Template */}
+      <div className="hidden">
+        <QuotePDFTemplate 
+          ref={componentRef} 
+          quote={quote} 
+          items={quoteItems || []} 
+        />
       </div>
     </div>
   );
