@@ -97,7 +97,7 @@ export function CustomerSignupForm({ onBack, onSuccess }: CustomerSignupFormProp
       } else {
         toast({
           title: "Welcome to Siriusinfra!",
-          description: "Your account has been created successfully.",
+          description: "Account created. Please verify your email before logging in.",
         });
         onSuccess();
       }
@@ -138,9 +138,9 @@ export function CustomerSignupForm({ onBack, onSuccess }: CustomerSignupFormProp
       <div className="flex items-start gap-3 p-4 rounded-lg bg-emerald-500/10 border border-emerald-500/20">
         <CheckCircle2 className="w-5 h-5 text-emerald-600 dark:text-emerald-400 flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Instant Access</p>
+          <p className="text-sm font-medium text-emerald-700 dark:text-emerald-300">Access After Verification</p>
           <p className="text-xs text-emerald-600/80 dark:text-emerald-400/80 mt-0.5">
-            You'll get immediate access to browse services, view quotes, and sign contracts.
+            Verify your email first, then you can log in right away as a customer.
           </p>
         </div>
       </div>

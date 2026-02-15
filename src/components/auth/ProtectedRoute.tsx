@@ -29,22 +29,27 @@ export function ProtectedRoute({ children, allowedRoles, redirectTo = "/auth" }:
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
 
-  // 2. If role is required, block users with missing or mismatched roles
-  if (allowedRoles) {
-    if (!role) {
-      return <Navigate to="/unauthorized" replace />;
-    }
-
-    if (!allowedRoles.includes(role)) {
-      if (role === AppRole.ADMIN) {
-        return <Navigate to="/admin" replace />;
-      }
-
-      return <Navigate to="/unauthorized" replace />;
-    }
+  if (!allowedRoles) {
+    return <>{children}</>;
   }
 
-  return <>{children}</>;
+  if (!role) {
+    return <Navigate to="/" replace />;
+  }
+
+  if (allowedRoles.includes(role)) {
+    return <>{children}</>;
+  }
+
+  if (role === AppRole.ADMIN) {
+    return <Navigate to="/admin" replace />;
+  }
+
+  if (role === AppRole.EMPLOYEE) {
+    return <Navigate to="/dashboard" replace />;
+  }
+
+  return <Navigate to="/" replace />;
 }
 
 // --- SPECIFIC ROUTE GUARDS ---

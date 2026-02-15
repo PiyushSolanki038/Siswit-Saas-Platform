@@ -67,15 +67,27 @@ export function SignInForm() {
             title: "Login failed",
             description: "Invalid email or password. Please try again.",
           });
-        } 
-        else if (errorMessage.includes("not approved") || errorMessage.includes("pending approval")) {
+        } else if (
+          errorMessage.includes("email not confirmed") ||
+          errorMessage.includes("email not verified") ||
+          errorMessage.includes("verify your email")
+        ) {
+          toast({
+            variant: "destructive",
+            title: "Email verification required",
+            description: "Please verify your email before logging in.",
+          });
+        } else if (
+          errorMessage.includes("not approved") ||
+          errorMessage.includes("pending approval") ||
+          errorMessage.includes("waiting for admin approval")
+        ) {
           toast({
             variant: "destructive",
             title: "Account Pending Approval",
-            description: "Your account has not been approved by an admin yet. Please contact support.",
+            description: "Your account is waiting for admin approval",
           });
-        } 
-        else {
+        } else {
           toast({
             variant: "destructive",
             title: "Login failed",

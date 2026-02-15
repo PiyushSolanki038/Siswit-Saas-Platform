@@ -31,7 +31,6 @@ interface AuthContextType {
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-/* ---------- ROLE MAPPER ---------- */
 const mapRole = (role: string | null): AppRole | null => {
   switch (role) {
     case AppRole.ADMIN:
@@ -45,65 +44,139 @@ const mapRole = (role: string | null): AppRole | null => {
   }
 };
 
+interface RoleState {
+  role: AppRole | null;
+  approved: boolean | null;
+  error: Error | null;
+}
+
+const normalizeRolePayload = (
+  payload: unknown
+): { role: string | null; approved: boolean | null } => {
+  if (Array.isArray(payload)) {
+    const first = payload[0] as Record<string, unknown> | undefined;
+    return {
+      role: typeof first?.role === "string" ? first.role : null,
+      approved: typeof first?.approved === "boolean" ? first.approved : null,
+    };
+  }
+
+  if (payload && typeof payload === "object") {
+    const row = payload as Record<string, unknown>;
+    return {
+      role: typeof row.role === "string" ? row.role : null,
+      approved: typeof row.approved === "boolean" ? row.approved : null,
+    };
+  }
+
+  return { role: null, approved: null };
+};
+
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
   const [role, setRole] = useState<AppRole | null>(null);
   const [loading, setLoading] = useState(true);
+  const [, setRoleApproved] = useState<boolean | null>(null);
 
-  const authInitialized = useRef(false);
+  const roleLoadId = useRef(0);
+  const manualSignInInProgress = useRef(false);
 
-  /* -------------------- INIT AUTH (ONCE) -------------------- */
+  const fetchRoleState = async (): Promise<RoleState> => {
+    const { data, error } = await supabase.rpc("ensure_user_role");
+
+    if (error) {
+      return {
+        role: null,
+        approved: null,
+        error: new Error(error.message),
+      };
+    }
+
+    const normalized = normalizeRolePayload(data);
+    const mappedRole = mapRole(normalized.role);
+
+    if (!mappedRole) {
+      return {
+        role: null,
+        approved: normalized.approved,
+        error: new Error("Unable to determine account role."),
+      };
+    }
+
+    return {
+      role: mappedRole,
+      approved: normalized.approved,
+      error: null,
+    };
+  };
+
   useEffect(() => {
+    const resolveSessionState = async (nextSession: Session | null) => {
+      const currentLoadId = ++roleLoadId.current;
+
+      setSession(nextSession);
+      setUser(nextSession?.user ?? null);
+
+      if (!nextSession?.user) {
+        setRole(null);
+        setRoleApproved(null);
+        setLoading(false);
+        return;
+      }
+
+      setLoading(true);
+
+      const roleState = await fetchRoleState();
+
+      if (roleLoadId.current !== currentLoadId) {
+        return;
+      }
+
+      if (roleState.error || !roleState.role) {
+        setRole(null);
+        setRoleApproved(null);
+        setLoading(false);
+        return;
+      }
+
+      if (
+        roleState.role === AppRole.EMPLOYEE &&
+        roleState.approved !== true &&
+        !manualSignInInProgress.current
+      ) {
+        await supabase.auth.signOut();
+
+        if (roleLoadId.current !== currentLoadId) {
+          return;
+        }
+
+        setSession(null);
+        setUser(null);
+        setRole(null);
+        setRoleApproved(null);
+        setLoading(false);
+        return;
+      }
+
+      setRole(roleState.role);
+      setRoleApproved(roleState.approved);
+      setLoading(false);
+    };
+
     const init = async () => {
       const {
         data: { session },
       } = await supabase.auth.getSession();
 
-      setSession(session);
-      setUser(session?.user ?? null);
-
-      // 🔑 IMPORTANT: auth is done here
-      authInitialized.current = true;
-      setLoading(false);
-
-      // 🔄 role loads AFTER auth (non-blocking)
-      if (session?.user) {
-        supabase
-          .from("user_roles")
-          .select("role")
-          .eq("user_id", session.user.id)
-          .maybeSingle()
-          .then(({ data }) => {
-            setRole(mapRole(data?.role ?? null));
-          });
-      }
+      await resolveSessionState(session);
     };
 
-    init();
+    void init();
 
     const { data: listener } = supabase.auth.onAuthStateChange(
-      async (_event, session) => {
-        setSession(session);
-        setUser(session?.user ?? null);
-
-        setRole(null); // reset role on auth change
-
-        if (session?.user) {
-          supabase
-            .from("user_roles")
-            .select("role")
-            .eq("user_id", session.user.id)
-            .maybeSingle()
-            .then(({ data }) => {
-              setRole(mapRole(data?.role ?? null));
-            });
-        }
-
-        if (!authInitialized.current) {
-          authInitialized.current = true;
-          setLoading(false);
-        }
+      (_event, session) => {
+        void resolveSessionState(session);
       }
     );
 
@@ -111,8 +184,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       listener.subscription.unsubscribe();
     };
   }, []);
-
-  /* -------------------- ACTIONS -------------------- */
 
   const signUp = async (
     email: string,
@@ -137,35 +208,59 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   };
 
   const signIn = async (email: string, password: string) => {
-    const { data, error } =
-      await supabase.auth.signInWithPassword({ email, password });
+    manualSignInInProgress.current = true;
 
-    if (error || !data.user) {
-      return { data: null, error: error as Error };
-    }
+    try {
+      const { data, error } = await supabase.auth.signInWithPassword({
+        email,
+        password,
+      });
 
-    const { data: roleData } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", data.user.id)
-      .maybeSingle();
+      if (error || !data.user) {
+        return { data: null, error: error as Error };
+      }
 
-    const mappedRole = mapRole(roleData?.role ?? null);
+      const roleState = await fetchRoleState();
 
-    if (!mappedRole) {
-      await supabase.auth.signOut();
+      if (roleState.error || !roleState.role) {
+        await supabase.auth.signOut();
+        setUser(null);
+        setSession(null);
+        setRole(null);
+        setRoleApproved(null);
+
+        return {
+          data: null,
+          error:
+            roleState.error ?? new Error("Unable to determine account role."),
+        };
+      }
+
+      if (roleState.role === AppRole.EMPLOYEE && roleState.approved !== true) {
+        await supabase.auth.signOut();
+        setUser(null);
+        setSession(null);
+        setRole(null);
+        setRoleApproved(null);
+
+        return {
+          data: null,
+          error: new Error("Your account is waiting for admin approval"),
+        };
+      }
+
+      setUser(data.user);
+      setSession(data.session);
+      setRole(roleState.role);
+      setRoleApproved(roleState.approved);
+
       return {
-        data: null,
-        error: new Error("Account pending admin approval."),
+        data: { role: roleState.role },
+        error: null,
       };
+    } finally {
+      manualSignInInProgress.current = false;
     }
-
-    setRole(mappedRole);
-
-    return {
-      data: { role: mappedRole },
-      error: null,
-    };
   };
 
   const signOut = async () => {
@@ -173,6 +268,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setUser(null);
     setSession(null);
     setRole(null);
+    setRoleApproved(null);
   };
 
   return (

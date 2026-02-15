@@ -146,7 +146,14 @@ The platform implements role-based access control with multiple user roles:
 - **Customer**: Customer-facing dashboard and limited CRM features
 - **Employee**: Full CRM, CLM, and CPQ module access
 
-Users authenticate via Supabase and are assigned roles during the signup process.
+Users authenticate via Supabase and roles are always resolved from `public.user_roles`.
+
+Canonical auth rules:
+- `user_roles` is the source of truth for both `role` and `approved`
+- Every authenticated user must have a row in `user_roles`
+- Missing role rows are auto-healed to `role='user', approved=true` via RPC
+- Employee login is allowed only when `role='employee'` and `approved=true`
+- `signup_requests` is kept as history/audit for approval workflow status
 
 ---
 
@@ -154,12 +161,17 @@ Users authenticate via Supabase and are assigned roles during the signup process
 
 ### User Onboarding Flow
 
-1. **Public Access** → User visits landing page (`/`)
-2. **Sign Up** → User selects role (Customer/Employee) and creates account (`/auth`)
-3. **Role-Based Routing**:
+1. **Public Access** -> User visits landing page (`/`)
+2. **Sign Up** -> User selects role (Customer/Employee) and creates account (`/auth`)
+3. **Email Verification** -> User verifies email before first login
+4. **Role and Approval Enforcement**:
+   - **Customer Signup** -> `user_roles(role='user', approved=true)`
+   - **Employee Signup** -> `user_roles(role='employee', approved=false)` and pending history row
+   - **Admin Approves Employee** -> `user_roles.approved=true`
+5. **Role-Based Routing**:
    - **Admin**: Redirected to `/admin` for administrative dashboard
    - **Employee**: Redirected to `/dashboard` for employee workspace
-   - **Customer**: Limited access to customer portal
+   - **Customer**: Redirected to `/`
 
 ### Module Workflows
 
@@ -426,8 +438,9 @@ The project uses Supabase PostgreSQL with migrations located in `supabase/migrat
 - `suppliers` - Supplier master data
 
 **Authentication:**
-- `users` - User accounts with roles
-- `roles` - Available user roles (Admin, Employee, Customer)
+- `user_roles` - Canonical role and approval state (`role`, `approved`)
+- `signup_requests` - Employee approval history (`pending`, `approved`, `rejected`)
+- `profiles` - User profile data from signup metadata
 
 ## Development
 
@@ -509,7 +522,7 @@ VITE_SUPABASE_PUBLISHABLE_KEY=your_production_anon_key
 
 **Issue: Authentication failing**
 - Verify user exists in Supabase Auth
-- Check role assignment in users table
+- Check role assignment and approval in `public.user_roles`
 - Clear authentication cookies and retry
 - Check network requests in browser DevTools
 
@@ -583,3 +596,4 @@ Yes, you can!
 To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
 
 Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+

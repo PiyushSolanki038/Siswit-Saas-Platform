@@ -141,8 +141,8 @@ const Auth = () => {
               </h1>
               <p className="text-muted-foreground">
                 {successType === "employee"
-                  ? "Your employee account request has been submitted. An administrator will review and approve your access soon."
-                  : "Welcome to Siriusinfra! Your account is ready to use."}
+                  ? "Please verify your email first. After verification, an administrator will review and approve your employee access."
+                  : "Please verify your email. After verification, you can log in immediately as a customer."}
               </p>
             </div>
             <button
