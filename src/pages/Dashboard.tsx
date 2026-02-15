@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, ComponentType } from "react";
 import { useNavigate, Link } from "react-router-dom";
 import { Header } from "@/components/layout/Header";
 import { Footer } from "@/components/layout/Footer";
@@ -26,7 +26,30 @@ interface Profile {
   company: string | null;
 }
 
-const quickActions = [
+type ActivityStatus = "completed" | "pending" | "failed" | string;
+
+interface Activity {
+  title: string;
+  time: string;
+  status: ActivityStatus;
+}
+
+interface Stat {
+  label: string;
+  value: string;
+  change: string;
+  icon: ComponentType<any>;
+}
+
+interface QuickAction {
+  icon: ComponentType<any>;
+  title: string;
+  description: string;
+  color: string;
+  route: string;
+}
+
+const quickActions: QuickAction[] = [
   { icon: Calculator, title: "Create Quote", description: "Start a new CPQ quote", color: "from-primary to-primary/60", route: "/dashboard/cpq/quotes/new" },
   { icon: FileText, title: "New Contract", description: "Draft a new contract", color: "from-accent to-accent/60", route: "/dashboard/clm/contracts" },
   { icon: FileStack, title: "Create Document", description: "Generate a new document", color: "from-chart-4 to-chart-4/60", route: "/dashboard/documents/create" },
@@ -40,15 +63,101 @@ const Dashboard = () => {
   const [profile, setProfile] = useState<Profile | null>(null);
 
   // Initialize with empty/zero stats - these will show real data when fetched
-  const [stats] = useState([
+  const [stats, setStats] = useState<Stat[]>([
     { label: "Open Quotes", value: "0", change: "+0%", icon: Calculator },
     { label: "Active Contracts", value: "0", change: "+0%", icon: FileText },
     { label: "Documents Generated", value: "0", change: "+0%", icon: FileStack },
     { label: "Inventory Value", value: "$0", change: "+0%", icon: Boxes },
     { label: "Revenue MTD", value: "$0", change: "+0%", icon: TrendingUp },
   ]);
+  const [recentActivity, setRecentActivity] = useState<Activity[]>([]);
 
-  const [recentActivity] = useState([]);
+  // Fetch dashboard stats and recent activities
+  useEffect(() => {
+    const fetchDashboard = async () => {
+      if (!user) return;
+
+      try {
+        // Quotes count (open)
+        const { count: quotesCount } = await supabase
+          .from("quotes")
+          .select("id", { count: "exact" })
+          .in("status", ["draft", "pending_approval"] as string[]);
+
+        // Active contracts (not expired/cancelled)
+        const { count: contractsCount } = await supabase
+          .from("contracts")
+          .select("id", { count: "exact" })
+          .not("status", "eq", "expired")
+          .neq("status", "cancelled");
+
+        // Documents generated
+        const { count: docsCount } = await supabase
+          .from("auto_documents")
+          .select("id", { count: "exact" });
+
+        // Inventory value and Revenue MTD via server-side RPCs to reduce transferred rows
+        const { data: invRpc, error: invErr } = await supabase.rpc("get_inventory_value");
+        const inventoryValue = invErr ? 0 : Number(invRpc ?? 0);
+
+        const start = new Date();
+        start.setDate(1);
+        start.setHours(0, 0, 0, 0);
+        const end = new Date();
+        end.setHours(23, 59, 59, 999);
+
+        const { data: revRpc, error: revErr } = await supabase.rpc("get_revenue_mtd", {
+          start_date: start.toISOString().split("T")[0],
+          end_date: end.toISOString().split("T")[0],
+        });
+
+        const revenueMTD = revErr ? 0 : Number(revRpc ?? 0);
+
+        // Recent activities (limit 6)
+        const { data: activitiesData } = await supabase
+          .from("activities")
+          .select("subject, created_at, is_completed")
+          .order("created_at", { ascending: false })
+          .limit(6);
+
+        // Update stats (preserve icons)
+        setStats((prev) =>
+          prev.map((s) => {
+            switch (s.label) {
+              case "Open Quotes":
+                return { ...s, value: String(quotesCount ?? 0) };
+              case "Active Contracts":
+                return { ...s, value: String(contractsCount ?? 0) };
+              case "Documents Generated":
+                return { ...s, value: String(docsCount ?? 0) };
+              case "Inventory Value":
+                return { ...s, value: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(inventoryValue) };
+              case "Revenue MTD":
+                return { ...s, value: new Intl.NumberFormat("en-US", { style: "currency", currency: "USD" }).format(revenueMTD) };
+              default:
+                return s;
+            }
+          })
+        );
+
+        // Map recent activities
+        if (activitiesData && Array.isArray(activitiesData)) {
+          const mapped = activitiesData.map((a: any) => ({
+            title: a.subject ?? "Activity",
+            time: a.created_at ? new Date(a.created_at).toLocaleString() : "",
+            status: a.is_completed ? "completed" : "pending",
+          } as Activity));
+
+          setRecentActivity(mapped);
+        }
+      } catch (err) {
+        // ignore for now; keep defaults
+        // console.error(err);
+      }
+    };
+
+    fetchDashboard();
+  }, [user]);
 
   useEffect(() => {
     const fetchProfile = async () => {
