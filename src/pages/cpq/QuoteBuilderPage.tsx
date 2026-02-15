@@ -130,7 +130,6 @@ export default function QuoteBuilderPage() {
     setQuoteData(prev => ({ ...prev, account_id: newAccountId, contact_id: "", opportunity_id: "" }));
   };
 
-  // --- CALCULATIONS ENGINE ---
   const grossTotal = items.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0);
   const totalItemDiscounts = items.reduce((sum, item) => {
     return sum + (item.quantity * item.unit_price * (item.discount_percent / 100));
@@ -212,23 +211,36 @@ export default function QuoteBuilderPage() {
   };
 
   return (
-    <div className="space-y-6">
-      <div className="flex items-center justify-between">
-        <div className="flex items-center gap-4">
-          <Button variant="ghost" size="icon" onClick={() => navigate(-1)}>
+    <div className="container mx-auto p-1 md:p-6 space-y-6">
+      {/* Header - Stacked on mobile */}
+      <div className="flex flex-col gap-4 sm:flex-row sm:items-center sm:justify-between">
+        <div className="flex items-center gap-3">
+          <Button variant="ghost" size="icon" onClick={() => navigate(-1)} className="shrink-0">
             <ArrowLeft className="h-5 w-5" />
           </Button>
           <div>
-            <h1 className="text-3xl font-bold">{isEditMode ? "Edit Quote" : "Create Quote"}</h1>
-            <p className="text-muted-foreground">Build a professional quote for your customer</p>
+            <h1 className="text-2xl md:text-3xl font-bold">{isEditMode ? "Edit Quote" : "Create Quote"}</h1>
+            <p className="text-sm text-muted-foreground">Build a professional quote for your customer</p>
           </div>
         </div>
-        <div className="flex gap-2">
-          <Button variant="outline" onClick={() => handleSaveQuote("draft")} disabled={createQuoteMutation.isPending || updateQuoteMutation.isPending}>
-            <Save className="h-4 w-4 mr-2" />{isEditMode ? "Save Changes" : "Save Draft"}
+        <div className="flex gap-2 w-full sm:w-auto">
+          <Button 
+            variant="outline" 
+            className="flex-1 sm:flex-none" 
+            onClick={() => handleSaveQuote("draft")} 
+            disabled={createQuoteMutation.isPending || updateQuoteMutation.isPending}
+          >
+            <Save className="h-4 w-4 mr-2" />
+            <span className="hidden sm:inline">{isEditMode ? "Save Changes" : "Save Draft"}</span>
+            <span className="sm:hidden">Draft</span>
           </Button>
-          <Button onClick={() => handleSaveQuote("pending_approval")} disabled={(createQuoteMutation.isPending || updateQuoteMutation.isPending) || (!isEditMode && items.length === 0)}>
-            <Send className="h-4 w-4 mr-2" />Submit
+          <Button 
+            className="flex-1 sm:flex-none" 
+            onClick={() => handleSaveQuote("pending_approval")} 
+            disabled={(createQuoteMutation.isPending || updateQuoteMutation.isPending) || (!isEditMode && items.length === 0)}
+          >
+            <Send className="h-4 w-4 mr-2" />
+            <span>Submit</span>
           </Button>
         </div>
       </div>
@@ -237,6 +249,7 @@ export default function QuoteBuilderPage() {
         <div className="animate-pulse space-y-6"><div className="h-64 bg-muted rounded" /></div>
       ) : (
         <div className="grid gap-6 lg:grid-cols-3">
+          {/* Main Content Area */}
           <div className="lg:col-span-2 space-y-6">
             <Card>
               <CardHeader><CardTitle>Quote Details</CardTitle></CardHeader>
@@ -285,17 +298,17 @@ export default function QuoteBuilderPage() {
 
             <Card>
               <CardHeader><CardTitle>Products & Services</CardTitle></CardHeader>
-              <CardContent className="space-y-4">
+              <CardContent className="space-y-4 px-2 sm:px-6">
                 <div className="flex gap-2">
                   <Select value={selectedProduct} onValueChange={setSelectedProduct}>
-                    <SelectTrigger className="flex-1"><SelectValue placeholder="Add a product..." /></SelectTrigger>
+                    <SelectTrigger className="flex-1"><SelectValue placeholder="Add product..." /></SelectTrigger>
                     <SelectContent>
                       {products?.map((p) => (
                         <SelectItem key={p.id} value={p.id}>{p.name} - {formatCurrency(p.unit_price)}</SelectItem>
                       ))}
                     </SelectContent>
                   </Select>
-                  <Button onClick={addProduct} disabled={!selectedProduct}><Plus className="h-4 w-4" /></Button>
+                  <Button onClick={addProduct} disabled={!selectedProduct} size="icon"><Plus className="h-4 w-4" /></Button>
                 </div>
                 <Separator />
                 {items.length === 0 ? (
@@ -303,27 +316,27 @@ export default function QuoteBuilderPage() {
                 ) : (
                   <div className="space-y-4">
                     {items.map((item, index) => (
-                      <div key={index} className="p-4 rounded-lg border bg-card space-y-3">
-                        <div className="flex justify-between">
-                          <h4 className="font-medium">{item.product_name}</h4>
-                          <Button variant="ghost" size="icon" onClick={() => removeItem(index)}><Trash2 className="h-4 w-4 text-destructive" /></Button>
+                      <div key={index} className="p-3 sm:p-4 rounded-lg border bg-card space-y-3">
+                        <div className="flex justify-between items-start">
+                          <h4 className="font-medium text-sm sm:text-base">{item.product_name}</h4>
+                          <Button variant="ghost" size="icon" onClick={() => removeItem(index)} className="h-8 w-8 -mt-1"><Trash2 className="h-4 w-4 text-destructive" /></Button>
                         </div>
-                        <div className="grid gap-4 grid-cols-2 sm:grid-cols-4">
+                        <div className="grid gap-3 grid-cols-2 sm:grid-cols-4">
                           <div className="space-y-1">
-                            <Label className="text-xs">Qty</Label>
-                            <Input type="number" value={item.quantity} onChange={(e) => updateItem(index, "quantity", parseInt(e.target.value) || 1)} className="h-8" />
+                            <Label className="text-[10px] uppercase text-muted-foreground">Qty</Label>
+                            <Input type="number" value={item.quantity} onChange={(e) => updateItem(index, "quantity", parseInt(e.target.value) || 1)} className="h-9" />
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-xs">Price</Label>
-                            <Input type="number" value={item.unit_price} onChange={(e) => updateItem(index, "unit_price", parseFloat(e.target.value) || 0)} className="h-8" />
+                            <Label className="text-[10px] uppercase text-muted-foreground">Price</Label>
+                            <Input type="number" value={item.unit_price} onChange={(e) => updateItem(index, "unit_price", parseFloat(e.target.value) || 0)} className="h-9" />
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-xs">Disc %</Label>
-                            <Input type="number" value={item.discount_percent} onChange={(e) => updateItem(index, "discount_percent", parseFloat(e.target.value) || 0)} className="h-8" />
+                            <Label className="text-[10px] uppercase text-muted-foreground">Disc %</Label>
+                            <Input type="number" value={item.discount_percent} onChange={(e) => updateItem(index, "discount_percent", parseFloat(e.target.value) || 0)} className="h-9" />
                           </div>
                           <div className="space-y-1">
-                            <Label className="text-xs">Total</Label>
-                            <div className="h-8 flex items-center font-semibold text-sm">{formatCurrency(item.total)}</div>
+                            <Label className="text-[10px] uppercase text-muted-foreground">Total</Label>
+                            <div className="h-9 flex items-center font-bold text-xs sm:text-sm">{formatCurrency(item.total)}</div>
                           </div>
                         </div>
                       </div>
@@ -334,8 +347,9 @@ export default function QuoteBuilderPage() {
             </Card>
           </div>
 
+          {/* Sidebar / Bottom Summary */}
           <div className="space-y-6">
-            <Card className="sticky top-6">
+            <Card className="lg:sticky lg:top-6">
               <CardHeader><CardTitle className="flex items-center gap-2"><Calculator className="h-5 w-5" />Summary</CardTitle></CardHeader>
               <CardContent className="space-y-4">
                 <div className="space-y-2">
@@ -356,14 +370,14 @@ export default function QuoteBuilderPage() {
                   </div>
                   <div className="flex items-center justify-between pt-2">
                     <div className="flex items-center gap-2">
-                      <Label className="text-xs text-muted-foreground">Addl. Discount %</Label>
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">Addl. Disc %</Label>
                       <Input type="number" value={quoteData.discount_percent} onChange={(e) => setQuoteData({ ...quoteData, discount_percent: parseFloat(e.target.value) || 0 })} className="h-7 w-14 text-xs" />
                     </div>
                     <span className="text-sm text-destructive">-{formatCurrency(quoteDiscountAmount)}</span>
                   </div>
                   <div className="flex items-center justify-between pt-1">
                     <div className="flex items-center gap-2">
-                      <Label className="text-xs text-muted-foreground">Tax (GST) %</Label>
+                      <Label className="text-xs text-muted-foreground whitespace-nowrap">Tax (GST) %</Label>
                       <Input type="number" value={quoteData.tax_percent} onChange={(e) => setQuoteData({ ...quoteData, tax_percent: parseFloat(e.target.value) || 0 })} className="h-7 w-14 text-xs" />
                     </div>
                     <span className="text-sm">+{formatCurrency(taxAmount)}</span>
@@ -375,7 +389,7 @@ export default function QuoteBuilderPage() {
                   </div>
                 </div>
                 <div className="space-y-2 pt-2">
-                  <Button className="w-full" onClick={() => handleSaveQuote("pending_approval")} disabled={items.length === 0}>Submit Quote</Button>
+                  <Button className="w-full h-11" onClick={() => handleSaveQuote("pending_approval")} disabled={items.length === 0}>Submit Quote</Button>
                 </div>
               </CardContent>
             </Card>
