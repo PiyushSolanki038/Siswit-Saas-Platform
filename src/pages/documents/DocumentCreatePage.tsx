@@ -1,13 +1,17 @@
 import { useState } from "react";
-import { Link } from "react-router-dom";
+import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { Textarea } from "@/components/ui/textarea";
 import { 
   FileText, ArrowRight, ArrowLeft, Check, FileStack,
-  Building2, User, Briefcase, Calendar
+  Building2, User, Briefcase, Calendar, Loader2
 } from "lucide-react";
+import { toast } from "sonner";
+import { useAuth } from "@/hooks/useAuth";
+import { useCreateAutoDocument } from "@/hooks/useDocuments";
+import type { DocumentType } from "@/types/documents";
 import {
   Select,
   SelectContent,
@@ -17,11 +21,11 @@ import {
 } from "@/components/ui/select";
 
 const templates = [
-  { id: "1", name: "Sales Agreement", category: "Contract", description: "Standard sales contract for products and services" },
-  { id: "2", name: "Quote Proposal", category: "Quote", description: "Professional quote template with pricing breakdown" },
-  { id: "3", name: "Non-Disclosure Agreement", category: "NDA", description: "Mutual NDA for business partnerships" },
-  { id: "4", name: "Service Level Agreement", category: "Contract", description: "SLA template for service providers" },
-  { id: "5", name: "Invoice Template", category: "Invoice", description: "Standard invoice with line items" },
+  { id: "1", name: "Sales Agreement", category: "agreement", description: "Standard sales contract for products and services" },
+  { id: "2", name: "Quote Proposal", category: "proposal", description: "Professional quote template with pricing breakdown" },
+  { id: "3", name: "Non-Disclosure Agreement", category: "agreement", description: "Mutual NDA for business partnerships" },
+  { id: "4", name: "Service Level Agreement", category: "agreement", description: "SLA template for service providers" },
+  { id: "5", name: "Invoice Template", category: "invoice", description: "Standard invoice with line items" },
 ];
 
 const steps = [
@@ -31,8 +35,12 @@ const steps = [
 ];
 
 const DocumentCreatePage = () => {
+  const navigate = useNavigate();
+  const { user } = useAuth();
+  const createDocumentMutation = useCreateAutoDocument();
   const [currentStep, setCurrentStep] = useState(1);
   const [selectedTemplate, setSelectedTemplate] = useState<string | null>(null);
+  const [isGenerating, setIsGenerating] = useState(false);
   const [formData, setFormData] = useState({
     documentName: "",
     accountName: "",
@@ -45,6 +53,71 @@ const DocumentCreatePage = () => {
 
   const handleInputChange = (field: string, value: string) => {
     setFormData((prev) => ({ ...prev, [field]: value }));
+  };
+
+  const handleGenerateDocument = async () => {
+    // Check authentication
+    if (!user) {
+      toast.error("You must be logged in to create documents");
+      return;
+    }
+
+    // Validate required fields
+    if (!formData.documentName) {
+      toast.error("Please enter a document name");
+      return;
+    }
+    if (!selectedTemplate) {
+      toast.error("Please select a template");
+      return;
+    }
+    if (!formData.accountName) {
+      toast.error("Please select an account");
+      return;
+    }
+
+    setIsGenerating(true);
+
+    try {
+      const selectedTemplateData = templates.find((t) => t.id === selectedTemplate);
+      
+      // Log for debugging
+      console.log("Creating document with user:", user.id);
+      
+      // Create document with the collected data
+      await createDocumentMutation.mutateAsync({
+        name: formData.documentName,
+        type: (selectedTemplateData?.category as DocumentType) || "other",
+        status: "draft",
+        content: JSON.stringify({
+          templateName: selectedTemplateData?.name,
+          accountName: formData.accountName,
+          contactName: formData.contactName,
+          contactEmail: formData.contactEmail,
+          effectiveDate: formData.effectiveDate,
+          expiryDate: formData.expiryDate,
+          notes: formData.notes,
+        }),
+      });
+
+      // Navigate to documents list after successful creation
+      setTimeout(() => {
+        navigate("/dashboard/documents");
+      }, 1000);
+    } catch (error: any) {
+      console.error("Error generating document:", error);
+      
+      // Provide specific error messages
+      if (error?.message?.includes("row-level security")) {
+        toast.error("Permission denied: Unable to create document. Please ensure you're properly authenticated.");
+      } else if (error?.message?.includes("auto_documents")) {
+        toast.error("Document service not available. Please contact support.");
+      } else {
+        toast.error("Failed to generate document. Please try again.");
+      }
+    } finally {
+      setIsGenerating(false);
+    }
   };
 
   const selectedTemplateData = templates.find((t) => t.id === selectedTemplate);
@@ -261,7 +334,7 @@ const DocumentCreatePage = () => {
             <Button
               variant="outline"
               onClick={() => setCurrentStep((prev) => prev - 1)}
-              disabled={currentStep === 1}
+              disabled={currentStep === 1 || isGenerating}
             >
               <ArrowLeft className="w-4 h-4 mr-2" />
               Previous
@@ -275,9 +348,22 @@ const DocumentCreatePage = () => {
                 <ArrowRight className="w-4 h-4 ml-2" />
               </Button>
             ) : (
-              <Button variant="hero">
-                <FileStack className="w-4 h-4 mr-2" />
-                Generate Document
+              <Button 
+                variant="hero" 
+                onClick={handleGenerateDocument}
+                disabled={isGenerating}
+              >
+                {isGenerating ? (
+                  <>
+                    <Loader2 className="w-4 h-4 mr-2 animate-spin" />
+                    Generating...
+                  </>
+                ) : (
+                  <>
+                    <FileStack className="w-4 h-4 mr-2" />
+                    Generate Document
+                  </>
+                )}
               </Button>
             )}
           </div>
