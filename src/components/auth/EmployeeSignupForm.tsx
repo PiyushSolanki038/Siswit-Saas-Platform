@@ -74,14 +74,8 @@ export function EmployeeSignupForm({ onBack, onSuccess }: EmployeeSignupFormProp
       const firstName = nameParts[0];
       const lastName = nameParts.slice(1).join(" ") || "";
 
-      // SECURITY: Role and approval are assigned server-side based on signup_type.
-      const { error } = await signUp(
-        formData.email,
-        formData.password,
-        firstName,
-        lastName,
-        "employee"
-      );
+      // SECURITY: Role is assigned server-side as 'user' - admin must approve for employee access
+      const { error } = await signUp(formData.email, formData.password, firstName, lastName);
 
       if (error) {
         if (error.message.includes("already registered")) {
@@ -100,7 +94,7 @@ export function EmployeeSignupForm({ onBack, onSuccess }: EmployeeSignupFormProp
       } else {
         toast({
           title: "Application Submitted!",
-          description: "Verify your email, then wait for admin approval before you can log in.",
+          description: "Your employee account request has been submitted. An administrator will review and approve your access.",
         });
         onSuccess();
       }
@@ -143,7 +137,7 @@ export function EmployeeSignupForm({ onBack, onSuccess }: EmployeeSignupFormProp
         <div>
           <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Admin Approval Required</p>
           <p className="text-xs text-amber-600/80 dark:text-amber-400/80 mt-0.5">
-            First verify your email, then an administrator must approve your account before dashboard access.
+            After registration, your account will be reviewed by an administrator before you can access the dashboard.
           </p>
         </div>
       </div>

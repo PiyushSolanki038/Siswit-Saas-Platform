@@ -1,5 +1,5 @@
 export enum AppRole {
   ADMIN = "admin",
-  USER = "user",
   EMPLOYEE = "employee",
+  USER = "user"
 }

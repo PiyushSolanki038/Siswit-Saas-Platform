@@ -6,7 +6,6 @@ import { EmployeeSignupForm } from "@/components/auth/EmployeeSignupForm";
 import { CustomerSignupForm } from "@/components/auth/CustomerSignupForm";
 import { SignInForm } from "@/components/auth/SignInForm";
 import { CheckCircle2 } from "lucide-react";
-import { AppRole } from "@/types/roles";
 
 type AuthStep = "role-selection" | "employee-signup" | "customer-signup" | "signin" | "success";
 
@@ -21,9 +20,7 @@ const Auth = () => {
   // Redirect based on role if already logged in
   useEffect(() => {
     if (user && role) {
-      if (role === AppRole.ADMIN) {
-        navigate("/admin");
-      } else if (role === AppRole.EMPLOYEE) {
+      if (role === "employee") {
         navigate("/dashboard");
       } else {
         navigate("/");
@@ -141,8 +138,8 @@ const Auth = () => {
               </h1>
               <p className="text-muted-foreground">
                 {successType === "employee"
-                  ? "Please verify your email first. After verification, an administrator will review and approve your employee access."
-                  : "Please verify your email. After verification, you can log in immediately as a customer."}
+                  ? "Your employee account request has been submitted. An administrator will review and approve your access soon."
+                  : "Welcome to Siriusinfra! Your account is ready to use."}
               </p>
             </div>
             <button
@@ -231,7 +228,7 @@ const Auth = () => {
         <div className="relative text-center max-w-md">
           <h2 className="text-4xl font-bold text-white mb-6">
             Transform Your Business with{" "}
-            <span className="text-blue-200">Siriusinfra</span>
+            <span className="text-blue-200">SISWIT</span>
           </h2>
           <p className="text-white/90 text-lg mb-8">
             Access powerful CPQ, CLM, and CRM tools in one unified platform. 

@@ -67,27 +67,15 @@ export function SignInForm() {
             title: "Login failed",
             description: "Invalid email or password. Please try again.",
           });
-        } else if (
-          errorMessage.includes("email not confirmed") ||
-          errorMessage.includes("email not verified") ||
-          errorMessage.includes("verify your email")
-        ) {
-          toast({
-            variant: "destructive",
-            title: "Email verification required",
-            description: "Please verify your email before logging in.",
-          });
-        } else if (
-          errorMessage.includes("not approved") ||
-          errorMessage.includes("pending approval") ||
-          errorMessage.includes("waiting for admin approval")
-        ) {
+        } 
+        else if (errorMessage.includes("not approved") || errorMessage.includes("pending approval")) {
           toast({
             variant: "destructive",
             title: "Account Pending Approval",
-            description: "Your account is waiting for admin approval",
+            description: "Your account has not been approved by an admin yet. Please contact support.",
           });
-        } else {
+        } 
+        else {
           toast({
             variant: "destructive",
             title: "Login failed",
@@ -103,11 +91,9 @@ export function SignInForm() {
         // --- REDIRECT LOGIC ---
         // Check the role returned from useAuth and redirect accordingly
         if (data?.role === AppRole.ADMIN) {
-          navigate("/admin");
-        } else if (data?.role === AppRole.EMPLOYEE) {
-          navigate("/dashboard");
+            navigate("/admin");
         } else {
-          navigate("/");
+            navigate("/dashboard");
         }
       }
     } catch {

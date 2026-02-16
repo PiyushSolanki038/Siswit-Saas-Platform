@@ -1,19 +1,32 @@
-import { AppRole } from "@/hooks/useAuth";
+import { AppRole } from "@/types/roles"; // Ensure this matches your actual path
 import { Badge } from "@/components/ui/badge";
-import { Building2, UserCheck, Shield } from "lucide-react"; // 1. Added Shield Icon
+import { Building2, UserCheck, Shield, Clock } from "lucide-react"; 
 
 interface RoleBadgeProps {
-  role: AppRole;
+  role: AppRole | null; // Allow null to prevent crashes
   size?: "sm" | "md";
 }
 
 export function RoleBadge({ role, size = "md" }: RoleBadgeProps) {
-  // 2. Normalize checks
-  const roleName = role?.toString().toLowerCase(); 
+  // 1. Safety Check: If no role exists yet, show a 'Pending' or return null
+  if (!role) {
+    return (
+      <Badge
+        variant="outline"
+        className={`${size === "sm" ? "text-xs px-2 py-0.5" : "text-sm px-3 py-1"} gap-1.5 opacity-70`}
+      >
+        <Clock className={size === "sm" ? "w-3 h-3" : "w-4 h-4"} />
+        <span className="hidden sm:inline capitalize">Pending</span>
+      </Badge>
+    );
+  }
+
+  // 2. Normalize checks safely
+  const roleName = role.toLowerCase(); 
   const isAdmin = roleName === "admin";
   const isEmployee = roleName === "employee";
   
-  // 3. Determine Variant: Admin=Destructive (Red/Distinct), Employee=Default (Primary), Client=Secondary (Grey)
+  // 3. Determine Variant
   const badgeVariant = isAdmin ? "destructive" : isEmployee ? "default" : "secondary";
 
   return (
@@ -21,7 +34,7 @@ export function RoleBadge({ role, size = "md" }: RoleBadgeProps) {
       variant={badgeVariant}
       className={`${size === "sm" ? "text-xs px-2 py-0.5" : "text-sm px-3 py-1"} gap-1.5`}
     >
-      {/* 4. Render correct icon based on role */}
+      {/* 4. Icon Logic */}
       {isAdmin ? (
         <Shield className={size === "sm" ? "w-3 h-3" : "w-4 h-4"} />
       ) : isEmployee ? (
@@ -30,7 +43,6 @@ export function RoleBadge({ role, size = "md" }: RoleBadgeProps) {
         <UserCheck className={size === "sm" ? "w-3 h-3" : "w-4 h-4"} />
       )}
 
-      {/* Role text hidden on mobile, visible on tablet+ */}
       <span className="hidden sm:inline capitalize">
         {isAdmin ? "Admin" : isEmployee ? "Employee" : "Client"}
       </span>
