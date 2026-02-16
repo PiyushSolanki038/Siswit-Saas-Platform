@@ -100,13 +100,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setSession(session);
         setUser(session?.user ?? null);
 
-        // mark auth initialized
-        authInitialized.current = true;
-        setLoading(false);
-
-        // load role after auth (non-blocking)
+        // load role after auth FIRST, then set loading to false
         if (session?.user) {
           await fetchRoleAndApproval(session.user.id);
+        }
+
+        // mark auth initialized and set loading to false AFTER role is fetched
+        if (isMounted) {
+          authInitialized.current = true;
+          setLoading(false);
         }
       } catch (error) {
         console.error("Auth init error:", error);
@@ -129,12 +131,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     const { data: listener } = supabase.auth.onAuthStateChange(
       async (_event, session) => {
+        // Only update session/user, don't reset role unnecessarily
         setSession(session);
         setUser(session?.user ?? null);
-        setRole(null); // reset role
-        setIsApproved(null);
 
-        if (session?.user) {
+        // Only reset and re-fetch role for significant auth events
+        // Ignore token refresh events (SIGNED_IN with same user)
+        if (_event === "SIGNED_OUT") {
+          setRole(null);
+          setIsApproved(null);
+        } else if (session?.user) {
+          // For SIGNED_IN or TOKEN_REFRESHED events, fetch role if user changed
           await fetchRoleAndApproval(session.user.id);
         }
 
@@ -146,6 +153,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     );
 
     return () => {
+      isMounted = false;
       listener.subscription.unsubscribe();
     };
   }, []);
