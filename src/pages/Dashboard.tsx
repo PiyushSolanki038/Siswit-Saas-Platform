@@ -199,7 +199,7 @@ const Dashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       {/* Replaced custom header with the shared Header component */}
-      <Header />
+      {/* <Header /> */}
 
       <main className="pt-16">
         {/* Welcome Section */}

@@ -9,7 +9,7 @@ import { ThemeProvider } from "@/hooks/useTheme";
 
 // Auth & Layout Routes
 import { EmployeeRoute, AdminRoute } from "@/components/auth/ProtectedRoute";
-import { DashboardLayout } from "@/components/crm/DashboardLayout"; // <-- IMPORTANT: Adjust this path if your layout is in a components/layouts folder
+import { DashboardLayout } from "@/components/crm/DashboardLayout";
 
 // Public Pages
 import Index from "./pages/Index";
@@ -36,8 +36,8 @@ import DocumentESignPage from "./pages/documents/DocumentESignPage";
 
 // CLM
 import CLMDashboard from "./pages/clm/CLMDashboard";
-import ContractsPage from "./pages/clm/ContractsPage"; 
-import TemplatesPage from "./pages/clm/TemplatesPage"; 
+import ContractsPage from "./pages/clm/ContractsPage";
+import TemplatesPage from "./pages/clm/TemplatesPage";
 
 // CRM
 import CRMLayout from "./pages/crm/CRMLayout";
@@ -70,11 +70,13 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
+
         <BrowserRouter>
           <ScrollToTop />
+
           <AuthProvider>
             <Routes>
-              {/* --- PUBLIC ROUTES --- */}
+              {/* ---------------- PUBLIC ROUTES ---------------- */}
               <Route path="/" element={<Index />} />
               <Route path="/products" element={<Products />} />
               <Route path="/solutions" element={<Solutions />} />
@@ -84,40 +86,30 @@ const App = () => (
               <Route path="/auth" element={<Auth />} />
               <Route path="/unauthorized" element={<Unauthorized />} />
 
-              {/* --- ADMIN ROUTE --- */}
-              <Route 
-                path="/admin" 
+              {/* ---------------- ADMIN ---------------- */}
+              <Route
+                path="/admin"
                 element={
                   <AdminRoute>
-                    <AdminDashboard /> 
+                    <AdminDashboard />
                   </AdminRoute>
-                } 
+                }
               />
 
-              {/* --- STANDALONE DASHBOARD (NO SIDEBAR) --- */}
-              {/* Matches exactly /dashboard */}
-              <Route 
-                path="/dashboard" 
-                element={
-                  <EmployeeRoute>
-                    <Dashboard />
-                  </EmployeeRoute>
-                } 
-              />
-
-              {/* --- MODULE DASHBOARDS (WITH SIDEBAR) --- */}
-              <Route 
-                path="/dashboard" 
+              {/* ---------------- DASHBOARD SYSTEM ---------------- */}
+              <Route
+                path="/dashboard"
                 element={
                   <EmployeeRoute>
                     <DashboardLayout />
                   </EmployeeRoute>
                 }
               >
-                {/* Notice we removed the 'index' Route for Dashboard from here */}
+                {/* Default dashboard page */}
+                <Route index element={<Dashboard />} />
                 <Route path="analytics" element={<Dashboard />} />
 
-                {/* CPQ Routes */}
+                {/* CPQ */}
                 <Route path="cpq" element={<CPQDashboard />} />
                 <Route path="cpq/products" element={<ProductsPage />} />
                 <Route path="cpq/quotes" element={<QuotesListPage />} />
@@ -125,12 +117,12 @@ const App = () => (
                 <Route path="cpq/quotes/:id" element={<QuoteDetailPage />} />
                 <Route path="cpq/quotes/:id/edit" element={<QuoteBuilderPage />} />
 
-                {/* CLM Routes */}
+                {/* CLM */}
                 <Route path="clm" element={<CLMDashboard />} />
                 <Route path="clm/contracts" element={<ContractsPage />} />
                 <Route path="clm/templates" element={<TemplatesPage />} />
 
-                {/* CRM Routes */}
+                {/* CRM */}
                 <Route path="crm" element={<CRMLayout />} />
                 <Route path="crm/leads" element={<LeadsPage />} />
                 <Route path="crm/pipeline" element={<PipelinePage />} />
@@ -139,7 +131,7 @@ const App = () => (
                 <Route path="crm/opportunities" element={<OpportunitiesPage />} />
                 <Route path="crm/activities" element={<ActivitiesPage />} />
 
-                {/* Documents Routes */}
+                {/* Documents */}
                 <Route path="documents" element={<DocumentsDashboard />} />
                 <Route path="documents/create" element={<DocumentCreatePage />} />
                 <Route path="documents/templates" element={<DocumentTemplatesPage />} />
@@ -147,7 +139,7 @@ const App = () => (
                 <Route path="documents/pending" element={<PendingSignaturesPage />} />
                 <Route path="documents/:id/esign" element={<DocumentESignPage />} />
 
-                {/* ERP Routes */}
+                {/* ERP */}
                 <Route path="erp" element={<ERPDashboard />} />
                 <Route path="erp/inventory" element={<InventoryPage />} />
                 <Route path="erp/procurement" element={<ProcurementPage />} />
@@ -155,7 +147,7 @@ const App = () => (
                 <Route path="erp/finance" element={<FinancePage />} />
               </Route>
 
-              {/* Catch-all */}
+              {/* ---------------- 404 ---------------- */}
               <Route path="*" element={<NotFound />} />
             </Routes>
           </AuthProvider>

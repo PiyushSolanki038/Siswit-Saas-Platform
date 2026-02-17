@@ -30,15 +30,23 @@ export function ProtectedRoute({ children, allowedRoles, redirectTo = "/auth" }:
   }
 
   // 2. If logged in but role doesn't match the allowed roles
-  if (allowedRoles && role && !allowedRoles.includes(role)) {
-    // Optional: If an Admin tries to access a normal route, you might want to redirect them 
-    // to the admin dashboard instead of the generic unauthorized page.
-    if (role === AppRole.ADMIN) {
-       return <Navigate to="/admin" replace />;
-    }
-    
-    return <Navigate to="/unauthorized" replace />;
+  // 2. If role not yet loaded, wait
+if (allowedRoles && !role) {
+  return (
+    <div className="min-h-screen flex items-center justify-center bg-background">
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+    </div>
+  );
+}
+
+// 3. If role exists but not allowed
+if (allowedRoles && role && !allowedRoles.includes(role)) {
+  if (role === AppRole.ADMIN) {
+    return <Navigate to="/admin" replace />;
   }
+  return <Navigate to="/unauthorized" replace />;
+}
+
 
   return <>{children}</>;
 }
