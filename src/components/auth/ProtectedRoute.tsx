@@ -10,44 +10,50 @@ interface ProtectedRouteProps {
 }
 
 export function ProtectedRoute({ children, allowedRoles, redirectTo = "/auth" }: ProtectedRouteProps) {
-  const { user, role, loading } = useAuth();
+  const { user, role, isApproved, loading } = useAuth();
   const location = useLocation();
-
+  
   if (loading) {
     return (
       <div className="min-h-screen flex items-center justify-center bg-background">
-        <div className="flex flex-col items-center gap-4">
-          <Loader2 className="w-8 h-8 animate-spin text-primary" />
-          <p className="text-muted-foreground">Loading...</p>
-        </div>
+      <div className="flex flex-col items-center gap-4">
+      <Loader2 className="w-8 h-8 animate-spin text-primary" />
+      <p className="text-muted-foreground">Loading...</p>
+      </div>
       </div>
     );
   }
-
+  
   // 1. If not logged in, send to login page
   if (!user) {
     return <Navigate to={redirectTo} state={{ from: location }} replace />;
   }
-
+  
   // 2. If logged in but role doesn't match the allowed roles
   // 2. If role not yet loaded, wait
-if (allowedRoles && !role) {
-  return (
-    <div className="min-h-screen flex items-center justify-center bg-background">
+  if (allowedRoles && !role) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-background">
       <Loader2 className="w-8 h-8 animate-spin text-primary" />
-    </div>
-  );
-}
-
-// 3. If role exists but not allowed
-if (allowedRoles && role && !allowedRoles.includes(role)) {
-  if (role === AppRole.ADMIN) {
-    return <Navigate to="/admin" replace />;
+      </div>
+    );
   }
-  return <Navigate to="/unauthorized" replace />;
-}
-
-
+  
+  // 3. If role exists but not allowed
+  if (allowedRoles && role && !allowedRoles.includes(role)) {
+    if (role === AppRole.ADMIN) {
+      return <Navigate to="/admin" replace />;
+    }
+    return <Navigate to="/unauthorized" replace />;
+  }
+  
+  // 4. Block unapproved employees
+  if (role === AppRole.EMPLOYEE && isApproved === false) {
+    return <Navigate to="/pending-approval" replace />;
+  }
+  
+  
+  
   return <>{children}</>;
 }
 
@@ -57,7 +63,7 @@ if (allowedRoles && role && !allowedRoles.includes(role)) {
 export function EmployeeRoute({ children }: { children: React.ReactNode }) {
   return (
     <ProtectedRoute allowedRoles={[AppRole.EMPLOYEE]}>
-      {children}
+    {children}
     </ProtectedRoute>
   );
 }
@@ -66,7 +72,7 @@ export function EmployeeRoute({ children }: { children: React.ReactNode }) {
 export function UserRoute({ children }: { children: React.ReactNode }) {
   return (
     <ProtectedRoute allowedRoles={[AppRole.USER]}>
-      {children}
+    {children}
     </ProtectedRoute>
   );
 }
@@ -75,7 +81,7 @@ export function UserRoute({ children }: { children: React.ReactNode }) {
 export function AdminRoute({ children }: { children: React.ReactNode }) {
   return (
     <ProtectedRoute allowedRoles={[AppRole.ADMIN]}>
-      {children}
+    {children}
     </ProtectedRoute>
   );
 }
