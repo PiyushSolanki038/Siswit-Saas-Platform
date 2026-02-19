@@ -138,7 +138,9 @@ export default function AdminDashboard() {
         const [requestResult, profileResult] = await Promise.all([
           supabase
             .from("signup_requests")
-            .select("id, user_id, email, first_name, last_name, created_at, status")
+            .select(
+              "id, user_id, email, first_name, last_name, created_at, status",
+            )
             .in("user_id", pendingUserIds),
           supabase
             .from("profiles")
@@ -154,13 +156,13 @@ export default function AdminDashboard() {
       }
 
       const profileByUser = new Map(
-        profileRows.map((profile) => [profile.user_id, profile])
+        profileRows.map((profile) => [profile.user_id, profile]),
       );
 
       const pendingRequestByUser = new Map(
         requestRows
           .filter((request) => request.status === "pending")
-          .map((request) => [request.user_id, request])
+          .map((request) => [request.user_id, request]),
       );
 
       const pendingEmployees = pendingRoles
@@ -187,7 +189,7 @@ export default function AdminDashboard() {
         .filter((value): value is PendingEmployee => value !== null)
         .sort(
           (a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime()
+            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
         );
 
       setRequests(pendingEmployees);
@@ -219,21 +221,11 @@ export default function AdminDashboard() {
 
   const handleApprove = async (request: PendingEmployee) => {
     try {
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .update({ approved: true })
-        .eq("user_id", request.user_id)
-        .eq("role", AppRole.EMPLOYEE);
+      const { error } = await supabase.rpc("approve_employee", {
+        p_user_id: request.user_id,
+      });
 
-      if (roleError) throw roleError;
-
-      const { error: requestError } = await supabase
-        .from("signup_requests")
-        .update({ status: "approved" })
-        .eq("user_id", request.user_id)
-        .eq("status", "pending");
-
-      if (requestError) throw requestError;
+      if (error) throw error;
 
       toast({
         title: "User Approved",
@@ -242,7 +234,8 @@ export default function AdminDashboard() {
 
       await fetchData();
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Approval failed.";
+      const message =
+        error instanceof Error ? error.message : "Approval failed.";
       toast({ variant: "destructive", title: "Failed", description: message });
     }
   };
@@ -251,21 +244,11 @@ export default function AdminDashboard() {
     if (!confirm(`Reject ${request.email}?`)) return;
 
     try {
-      const { error: roleError } = await supabase
-        .from("user_roles")
-        .update({ approved: false })
-        .eq("user_id", request.user_id)
-        .eq("role", AppRole.EMPLOYEE);
+      const { error } = await supabase.rpc("reject_employee", {
+        p_user_id: request.user_id,
+      });
 
-      if (roleError) throw roleError;
-
-      const { error: requestError } = await supabase
-        .from("signup_requests")
-        .update({ status: "rejected" })
-        .eq("user_id", request.user_id)
-        .eq("status", "pending");
-
-      if (requestError) throw requestError;
+      if (error) throw error;
 
       toast({
         title: "Request Rejected",
@@ -274,7 +257,8 @@ export default function AdminDashboard() {
 
       await fetchData();
     } catch (error: unknown) {
-      const message = error instanceof Error ? error.message : "Rejection failed.";
+      const message =
+        error instanceof Error ? error.message : "Rejection failed.";
       toast({ variant: "destructive", title: "Failed", description: message });
     }
   };
@@ -364,21 +348,29 @@ export default function AdminDashboard() {
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Total Users</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    Total Users
+                  </CardTitle>
                   <Users className="h-4 w-4 text-muted-foreground" />
                 </CardHeader>
                 <CardContent>
                   <div className="text-2xl font-bold">{stats.totalUsers}</div>
-                  <p className="text-xs text-muted-foreground">Role rows in user_roles</p>
+                  <p className="text-xs text-muted-foreground">
+                    Role rows in user_roles
+                  </p>
                 </CardContent>
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Active Employees</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    Active Employees
+                  </CardTitle>
                   <CheckCircle2 className="h-4 w-4 text-green-600" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.activeEmployees}</div>
+                  <div className="text-2xl font-bold">
+                    {stats.activeEmployees}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     role=employee and approved=true
                   </p>
@@ -386,11 +378,15 @@ export default function AdminDashboard() {
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Pending Requests</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    Pending Requests
+                  </CardTitle>
                   <Clock className="h-4 w-4 text-orange-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.pendingRequests}</div>
+                  <div className="text-2xl font-bold">
+                    {stats.pendingRequests}
+                  </div>
                   <p className="text-xs text-muted-foreground">
                     role=employee, approved=false, pending request
                   </p>
@@ -398,12 +394,18 @@ export default function AdminDashboard() {
               </Card>
               <Card>
                 <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">Rejected</CardTitle>
+                  <CardTitle className="text-sm font-medium">
+                    Rejected
+                  </CardTitle>
                   <XCircle className="h-4 w-4 text-red-500" />
                 </CardHeader>
                 <CardContent>
-                  <div className="text-2xl font-bold">{stats.rejectedRequests}</div>
-                  <p className="text-xs text-muted-foreground">Historical rejected requests</p>
+                  <div className="text-2xl font-bold">
+                    {stats.rejectedRequests}
+                  </div>
+                  <p className="text-xs text-muted-foreground">
+                    Historical rejected requests
+                  </p>
                 </CardContent>
               </Card>
             </div>
@@ -436,14 +438,20 @@ export default function AdminDashboard() {
                           <div className="flex items-center gap-4">
                             <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
                               <span className="font-semibold text-primary">
-                                {(employee.first_name?.[0] || employee.email[0] || "U").toUpperCase()}
+                                {(
+                                  employee.first_name?.[0] ||
+                                  employee.email[0] ||
+                                  "U"
+                                ).toUpperCase()}
                               </span>
                             </div>
                             <div>
                               <p className="font-medium">
                                 {employee.first_name} {employee.last_name}
                               </p>
-                              <p className="text-sm text-muted-foreground">{employee.email}</p>
+                              <p className="text-sm text-muted-foreground">
+                                {employee.email}
+                              </p>
                             </div>
                           </div>
                           <div className="flex gap-2">
@@ -455,7 +463,10 @@ export default function AdminDashboard() {
                             >
                               Reject
                             </Button>
-                            <Button size="sm" onClick={() => handleApprove(employee)}>
+                            <Button
+                              size="sm"
+                              onClick={() => handleApprove(employee)}
+                            >
                               Approve
                             </Button>
                           </div>

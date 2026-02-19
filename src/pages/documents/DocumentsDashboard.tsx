@@ -135,7 +135,7 @@ const DocumentsDashboard = () => {
                     <div className="min-w-0">
                       <div className="truncate font-medium text-foreground">{document.name || "Untitled Document"}</div>
                       <div className="text-sm text-muted-foreground">
-                        {document.type} • {formatDistanceToNow(new Date(document.created_at), { addSuffix: true })}
+                        {document.type} • {document.created_at ? formatDistanceToNow(new Date(document.created_at), { addSuffix: true }) : "Unknown"}
                       </div>
                     </div>
                   </div>

@@ -2,13 +2,21 @@ import { useMemo, useState } from "react";
 import { useNavigate } from "react-router-dom";
 import { formatDistanceToNow } from "date-fns";
 import { Button } from "@/components/ui/button";
-import { useDocumentESignatures, useSendDocumentReminder } from "@/hooks/useDocuments";
+import {
+  useDocumentESignatures,
+  useSendDocumentReminder,
+} from "@/hooks/useDocuments";
 import { AlertCircle, Clock, Mail, RefreshCw, Send } from "lucide-react";
+import { toast } from "sonner";
 
 const PendingSignaturesPage = () => {
   const navigate = useNavigate();
   const sendReminderMutation = useSendDocumentReminder();
-  const { data: signatures = [], isLoading, refetch } = useDocumentESignatures();
+  const {
+    data: signatures = [],
+    isLoading,
+    refetch,
+  } = useDocumentESignatures();
   const [isSendingBulkReminders, setIsSendingBulkReminders] = useState(false);
 
   const pendingSignatures = useMemo(
@@ -28,7 +36,10 @@ const PendingSignaturesPage = () => {
   }, [pendingSignatures]);
 
   const totalRemindersSent = useMemo(() => {
-    return pendingSignatures.reduce((sum, signature) => sum + (signature.reminder_count || 0), 0);
+    return pendingSignatures.reduce(
+      (sum, signature) => sum + (signature.reminder_count || 0),
+      0,
+    );
   }, [pendingSignatures]);
 
   const handleRemind = async (signatureId: string) => {
@@ -42,29 +53,49 @@ const PendingSignaturesPage = () => {
   const handleSendBulkReminders = async () => {
     setIsSendingBulkReminders(true);
     try {
-      for (const signature of pendingSignatures) {
-        await sendReminderMutation.mutateAsync(signature.id);
+      const promises = pendingSignatures.map((sig) =>
+        sendReminderMutation.mutateAsync(sig.id),
+      );
+
+      const results = await Promise.allSettled(promises);
+      const successCount = results.filter((r) => r.status === "fulfilled").length;
+      const failureCount = results.filter((r) => r.status === "rejected").length;
+
+      if (successCount > 0) {
+        toast.success(
+          `Sent ${successCount} reminder${successCount !== 1 ? "s" : ""}`,
+        );
       }
-    } catch {
-      // Error toast is handled in the mutation hook.
+      if (failureCount > 0) {
+        toast.error(
+          `${failureCount} reminder${failureCount !== 1 ? "s" : ""} failed`,
+        );
+      }
     } finally {
       setIsSendingBulkReminders(false);
     }
   };
-
   return (
     <div className="space-y-6">
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
         <div>
-          <h1 className="text-2xl font-bold text-foreground">Pending Signatures</h1>
-          <p className="text-muted-foreground">Track outstanding recipients and send reminders.</p>
+          <h1 className="text-2xl font-bold text-foreground">
+            Pending Signatures
+          </h1>
+          <p className="text-muted-foreground">
+            Track outstanding recipients and send reminders.
+          </p>
         </div>
         <div className="flex gap-2">
           <Button variant="outline" onClick={() => refetch()}>
             <RefreshCw className="mr-2 h-4 w-4" />
             Refresh
           </Button>
-          <Button variant="hero" onClick={handleSendBulkReminders} disabled={isSendingBulkReminders || pendingSignatures.length === 0}>
+          <Button
+            variant="hero"
+            onClick={handleSendBulkReminders}
+            disabled={isSendingBulkReminders || pendingSignatures.length === 0}
+          >
             <Mail className="mr-2 h-4 w-4" />
             Send Reminders
           </Button>
@@ -78,8 +109,12 @@ const PendingSignaturesPage = () => {
               <Clock className="h-5 w-5 text-amber-700 dark:text-amber-300" />
             </div>
             <div>
-              <div className="text-2xl font-bold text-foreground">{pendingSignatures.length}</div>
-              <div className="text-sm text-muted-foreground">Awaiting Signature</div>
+              <div className="text-2xl font-bold text-foreground">
+                {pendingSignatures.length}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Awaiting Signature
+              </div>
             </div>
           </div>
         </div>
@@ -89,8 +124,12 @@ const PendingSignaturesPage = () => {
               <AlertCircle className="h-5 w-5 text-red-700 dark:text-red-300" />
             </div>
             <div>
-              <div className="text-2xl font-bold text-foreground">{expiringSoonCount}</div>
-              <div className="text-sm text-muted-foreground">Expiring in 48h</div>
+              <div className="text-2xl font-bold text-foreground">
+                {expiringSoonCount}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Expiring in 48h
+              </div>
             </div>
           </div>
         </div>
@@ -100,8 +139,12 @@ const PendingSignaturesPage = () => {
               <Mail className="h-5 w-5 text-primary" />
             </div>
             <div>
-              <div className="text-2xl font-bold text-foreground">{totalRemindersSent}</div>
-              <div className="text-sm text-muted-foreground">Reminders Sent</div>
+              <div className="text-2xl font-bold text-foreground">
+                {totalRemindersSent}
+              </div>
+              <div className="text-sm text-muted-foreground">
+                Reminders Sent
+              </div>
             </div>
           </div>
         </div>
@@ -110,19 +153,27 @@ const PendingSignaturesPage = () => {
       {isLoading ? (
         <div className="rounded-xl border border-border bg-card py-12 text-center">
           <Clock className="mx-auto mb-4 h-12 w-12 animate-spin text-muted-foreground" />
-          <h3 className="mb-2 text-lg font-semibold text-foreground">Loading signatures...</h3>
+          <h3 className="mb-2 text-lg font-semibold text-foreground">
+            Loading signatures...
+          </h3>
         </div>
       ) : pendingSignatures.length === 0 ? (
         <div className="rounded-xl border border-border bg-card py-12 text-center">
           <Send className="mx-auto mb-4 h-12 w-12 text-muted-foreground" />
-          <h3 className="mb-2 text-lg font-semibold text-foreground">No pending signatures</h3>
-          <p className="text-muted-foreground">All signature requests are completed or there are none yet.</p>
+          <h3 className="mb-2 text-lg font-semibold text-foreground">
+            No pending signatures
+          </h3>
+          <p className="text-muted-foreground">
+            All signature requests are completed or there are none yet.
+          </p>
         </div>
       ) : (
         <div className="space-y-4">
           {pendingSignatures.map((signature) => {
             const expiresText = signature.expires_at
-              ? formatDistanceToNow(new Date(signature.expires_at), { addSuffix: true })
+              ? formatDistanceToNow(new Date(signature.expires_at), {
+                  addSuffix: true,
+                })
               : "No expiration";
 
             return (
@@ -144,23 +195,44 @@ const PendingSignaturesPage = () => {
                           {signature.document?.type || "document"}
                         </span>
                       </div>
+                      <Button
+                        variant="outline"
+                        size="sm"
+                        onClick={() => handleRemind(signature.id)}
+                        disabled={sendReminderMutation.isPending}
+                      >
+                        <Mail className="mr-1 h-4 w-4" />
+                        Remind
+                      </Button>
                       <div className="text-sm text-muted-foreground">
-                        Recipient: {signature.recipient_name} ({signature.recipient_email})
-                      </div>
-                      <div className="text-sm text-muted-foreground">
-                        Sent {formatDistanceToNow(new Date(signature.created_at), { addSuffix: true })} • Expires {expiresText}
+                        Sent{" "}
+                        {formatDistanceToNow(new Date(signature.created_at), {
+                          addSuffix: true,
+                        })}{" "}
+                        • Expires {expiresText}
                       </div>
                     </div>
                   </div>
 
                   <div className="flex gap-2 lg:ml-4">
-                    <Button variant="outline" size="sm" onClick={() => handleRemind(signature.id)}>
+                    <Button
+                      variant="outline"
+                      size="sm"
+                      onClick={() => handleRemind(signature.id)}
+                      disabled={sendReminderMutation.isPending}
+                    >
                       <Mail className="mr-1 h-4 w-4" />
                       Remind
                     </Button>
                     <Button
                       size="sm"
-                      onClick={() => navigate(`/dashboard/documents/${signature.document_id}/esign`)}
+                      onClick={() =>
+                        signature.document_id &&
+                        navigate(
+                          `/dashboard/documents/${signature.document_id}/esign`,
+                        )
+                      }
+                      disabled={!signature.document_id}
                     >
                       View
                     </Button>

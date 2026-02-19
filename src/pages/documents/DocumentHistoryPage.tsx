@@ -90,7 +90,7 @@ const DocumentHistoryPage = () => {
     const url = URL.createObjectURL(blob);
     const link = globalThis.document.createElement("a");
     link.href = url;
-    link.download = `${document.name.replace(/\s+/g, "-").toLowerCase()}.txt`;
+    link.download = `${(document.name || "untitled").replace(/\s+/g, "-").toLowerCase()}.txt`;
     link.click();
     URL.revokeObjectURL(url);
   };
@@ -210,7 +210,7 @@ const DocumentHistoryPage = () => {
                       <td className="p-4 text-muted-foreground">
                         <div className="flex items-center gap-1 text-sm">
                           <Calendar className="h-3.5 w-3.5" />
-                          {format(new Date(document.created_at), "MMM d, yyyy")}
+                          {document.created_at ? format(new Date(document.created_at), "MMM d, yyyy") : "—"}
                         </div>
                       </td>
                       <td className="p-4">

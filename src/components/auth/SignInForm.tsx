@@ -23,7 +23,7 @@ export function SignInForm() {
     password: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
+
   const { signIn } = useAuth();
   const { toast } = useToast();
   const navigate = useNavigate(); // Initialize hook
@@ -57,7 +57,7 @@ export function SignInForm() {
 
       // Capture 'data' which now contains the role and isApproved status
       const { data, error } = await signIn(formData.email, formData.password);
-      
+
       if (error) {
         const errorMessage = error.message.toLowerCase();
 
@@ -67,15 +67,17 @@ export function SignInForm() {
             title: "Login failed",
             description: "Invalid email or password. Please try again.",
           });
-        } 
-        else if (errorMessage.includes("not approved") || errorMessage.includes("pending approval")) {
+        } else if (
+          errorMessage.includes("not approved") ||
+          errorMessage.includes("pending approval")
+        ) {
           toast({
             variant: "destructive",
             title: "Account Pending Approval",
-            description: "Your account has not been approved by an admin yet. Please wait for an administrator to approve your access.",
+            description:
+              "Your account has not been approved by an admin yet. Please wait for an administrator to approve your access.",
           });
-        } 
-        else {
+        } else {
           toast({
             variant: "destructive",
             title: "Login failed",
@@ -90,7 +92,7 @@ export function SignInForm() {
 
         // --- REDIRECT LOGIC BASED ON ROLE ---
         // ADMIN -> /admin
-        // EMPLOYEE (approved) -> /dashboard  
+        // EMPLOYEE (approved) -> /dashboard
         // USER (customer) -> / (home)
         if (data?.role === AppRole.ADMIN) {
           navigate("/admin");
@@ -115,7 +117,9 @@ export function SignInForm() {
   return (
     <div className="space-y-6">
       <div>
-        <h1 className="text-3xl font-bold text-foreground mb-2">Welcome back</h1>
+        <h1 className="text-3xl font-bold text-foreground mb-2">
+          Welcome back
+        </h1>
         <p className="text-muted-foreground">
           Sign in to access your dashboard and services.
         </p>
@@ -154,7 +158,11 @@ export function SignInForm() {
             onClick={() => setShowPassword(!showPassword)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
-            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            {showPassword ? (
+              <EyeOff className="w-5 h-5" />
+            ) : (
+              <Eye className="w-5 h-5" />
+            )}
           </button>
           {errors.password && (
             <p className="text-sm text-destructive mt-1">{errors.password}</p>
@@ -169,7 +177,10 @@ export function SignInForm() {
               checked={rememberMe}
               onCheckedChange={(checked) => setRememberMe(checked as boolean)}
             />
-            <label htmlFor="remember" className="text-sm text-muted-foreground cursor-pointer">
+            <label
+              htmlFor="remember"
+              className="text-sm text-muted-foreground cursor-pointer"
+            >
               Remember me
             </label>
           </div>

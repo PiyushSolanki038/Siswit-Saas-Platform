@@ -4,30 +4,50 @@ import { Button } from "@/components/ui/button";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { useAuth } from "@/hooks/useAuth";
-import { Eye, EyeOff, ArrowRight, Loader2, User, Mail, Lock, Building2, ArrowLeft, ShieldCheck } from "lucide-react";
+import {
+  Eye,
+  EyeOff,
+  ArrowRight,
+  Loader2,
+  User,
+  Mail,
+  Lock,
+  Building2,
+  ArrowLeft,
+  ShieldCheck,
+} from "lucide-react";
 
-const employeeSignupSchema = z.object({
-  fullName: z.string().min(2, "Full name must be at least 2 characters"),
-  email: z.string().email("Please enter a valid work email"),
-  employeeId: z.string().optional(),
-  password: z.string()
-    .min(12, "Password must be at least 12 characters")
-    .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
-    .regex(/[a-z]/, "Password must contain at least one lowercase letter")
-    .regex(/[0-9]/, "Password must contain at least one number")
-    .regex(/[^A-Za-z0-9]/, "Password must contain at least one special character"),
-  confirmPassword: z.string(),
-}).refine((data) => data.password === data.confirmPassword, {
-  message: "Passwords don't match",
-  path: ["confirmPassword"],
-});
+const employeeSignupSchema = z
+  .object({
+    fullName: z.string().min(2, "Full name must be at least 2 characters"),
+    email: z.string().email("Please enter a valid work email"),
+    employeeId: z.string().optional(),
+    password: z
+      .string()
+      .min(12, "Password must be at least 12 characters")
+      .regex(/[A-Z]/, "Password must contain at least one uppercase letter")
+      .regex(/[a-z]/, "Password must contain at least one lowercase letter")
+      .regex(/[0-9]/, "Password must contain at least one number")
+      .regex(
+        /[^A-Za-z0-9]/,
+        "Password must contain at least one special character",
+      ),
+    confirmPassword: z.string(),
+  })
+  .refine((data) => data.password === data.confirmPassword, {
+    message: "Passwords don't match",
+    path: ["confirmPassword"],
+  });
 
 interface EmployeeSignupFormProps {
   onBack: () => void;
   onSuccess: () => void;
 }
 
-export function EmployeeSignupForm({ onBack, onSuccess }: EmployeeSignupFormProps) {
+export function EmployeeSignupForm({
+  onBack,
+  onSuccess,
+}: EmployeeSignupFormProps) {
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [isLoading, setIsLoading] = useState(false);
@@ -39,7 +59,7 @@ export function EmployeeSignupForm({ onBack, onSuccess }: EmployeeSignupFormProp
     confirmPassword: "",
   });
   const [errors, setErrors] = useState<Record<string, string>>({});
-  
+
   const { signUp } = useAuth();
   const { toast } = useToast();
 
@@ -75,14 +95,21 @@ export function EmployeeSignupForm({ onBack, onSuccess }: EmployeeSignupFormProp
       const lastName = nameParts.slice(1).join(" ") || "";
 
       // Pass signupType='employee' so the database trigger creates a pending employee record
-      const { error } = await signUp(formData.email, formData.password, firstName, lastName, "employee");
+      const { error } = await signUp(
+        formData.email,
+        formData.password,
+        firstName,
+        lastName,
+        "employee",
+      );
 
       if (error) {
         if (error.message.includes("already registered")) {
           toast({
             variant: "destructive",
             title: "Account exists",
-            description: "An account with this email already exists. Please sign in.",
+            description:
+              "An account with this email already exists. Please sign in.",
           });
         } else {
           toast({
@@ -94,7 +121,8 @@ export function EmployeeSignupForm({ onBack, onSuccess }: EmployeeSignupFormProp
       } else {
         toast({
           title: "Application Submitted!",
-          description: "Your employee account request has been submitted. An administrator will review and approve your access.",
+          description:
+            "Your employee account request has been submitted. An administrator will review and approve your access.",
         });
         onSuccess();
       }
@@ -125,8 +153,12 @@ export function EmployeeSignupForm({ onBack, onSuccess }: EmployeeSignupFormProp
             <Building2 className="w-5 h-5 text-primary" />
           </div>
           <div>
-            <h1 className="text-2xl font-bold text-foreground">Employee Registration</h1>
-            <p className="text-sm text-muted-foreground">Create your employee account</p>
+            <h1 className="text-2xl font-bold text-foreground">
+              Employee Registration
+            </h1>
+            <p className="text-sm text-muted-foreground">
+              Create your employee account
+            </p>
           </div>
         </div>
       </div>
@@ -135,9 +167,12 @@ export function EmployeeSignupForm({ onBack, onSuccess }: EmployeeSignupFormProp
       <div className="flex items-start gap-3 p-4 rounded-lg bg-amber-500/10 border border-amber-500/20">
         <ShieldCheck className="w-5 h-5 text-amber-600 dark:text-amber-400 flex-shrink-0 mt-0.5" />
         <div>
-          <p className="text-sm font-medium text-amber-700 dark:text-amber-300">Admin Approval Required</p>
+          <p className="text-sm font-medium text-amber-700 dark:text-amber-300">
+            Admin Approval Required
+          </p>
           <p className="text-xs text-amber-600/80 dark:text-amber-400/80 mt-0.5">
-            After registration, your account will be reviewed by an administrator before you can access the dashboard.
+            After registration, your account will be reviewed by an
+            administrator before you can access the dashboard.
           </p>
         </div>
       </div>
@@ -202,7 +237,11 @@ export function EmployeeSignupForm({ onBack, onSuccess }: EmployeeSignupFormProp
             onClick={() => setShowPassword(!showPassword)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
-            {showPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            {showPassword ? (
+              <EyeOff className="w-5 h-5" />
+            ) : (
+              <Eye className="w-5 h-5" />
+            )}
           </button>
           {errors.password && (
             <p className="text-sm text-destructive mt-1">{errors.password}</p>
@@ -225,10 +264,16 @@ export function EmployeeSignupForm({ onBack, onSuccess }: EmployeeSignupFormProp
             onClick={() => setShowConfirmPassword(!showConfirmPassword)}
             className="absolute right-3 top-1/2 -translate-y-1/2 text-muted-foreground hover:text-foreground"
           >
-            {showConfirmPassword ? <EyeOff className="w-5 h-5" /> : <Eye className="w-5 h-5" />}
+            {showConfirmPassword ? (
+              <EyeOff className="w-5 h-5" />
+            ) : (
+              <Eye className="w-5 h-5" />
+            )}
           </button>
           {errors.confirmPassword && (
-            <p className="text-sm text-destructive mt-1">{errors.confirmPassword}</p>
+            <p className="text-sm text-destructive mt-1">
+              {errors.confirmPassword}
+            </p>
           )}
         </div>
 

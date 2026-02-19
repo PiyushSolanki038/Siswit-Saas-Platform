@@ -7,13 +7,20 @@ import { CustomerSignupForm } from "@/components/auth/CustomerSignupForm";
 import { SignInForm } from "@/components/auth/SignInForm";
 import { CheckCircle2 } from "lucide-react";
 
-type AuthStep = "role-selection" | "employee-signup" | "customer-signup" | "signin" | "success";
+type AuthStep =
+  | "role-selection"
+  | "employee-signup"
+  | "customer-signup"
+  | "signin"
+  | "success";
 
 const Auth = () => {
   const [step, setStep] = useState<AuthStep>("role-selection");
   const [selectedRole, setSelectedRole] = useState<SelectedRole>(null);
-  const [successType, setSuccessType] = useState<"employee" | "customer" | null>(null);
-  
+  const [successType, setSuccessType] = useState<
+    "employee" | "customer" | null
+  >(null);
+
   const { user, role } = useAuth();
   const navigate = useNavigate();
 
@@ -134,12 +141,14 @@ const Auth = () => {
             </div>
             <div>
               <h1 className="text-2xl font-bold text-foreground mb-2">
-                {successType === "employee" ? "Application Submitted!" : "Account Created!"}
+                {successType === "employee"
+                  ? "Application Submitted!"
+                  : "Account Created!"}
               </h1>
               <p className="text-muted-foreground">
                 {successType === "employee"
                   ? "Your employee account request has been submitted. An administrator will review and approve your access soon."
-                  : "Welcome to Siriusinfra! Your account is ready to use."}
+                  : "Welcome to SISWIT! Your account is ready to use."}
               </p>
             </div>
             <button
@@ -181,7 +190,9 @@ const Auth = () => {
             {/* Logo */}
             <Link to="/" className="flex items-center gap-2 mb-8">
               <div className="w-10 h-10 rounded-xl gradient-primary flex items-center justify-center">
-                <span className="text-primary-foreground font-bold text-lg">S</span>
+                <span className="text-primary-foreground font-bold text-lg">
+                  S
+                </span>
               </div>
               <span className="text-xl font-bold text-foreground">
                 SIS<span className="text-gradient">WIT</span>
@@ -223,15 +234,18 @@ const Auth = () => {
       {/* Right side - Branding */}
       <div className="hidden lg:flex flex-1 bg-primary items-center justify-center p-12 relative overflow-hidden">
         <div className="absolute top-1/4 left-1/4 w-64 h-64 bg-white/10 rounded-full blur-3xl animate-float" />
-        <div className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-white/10 rounded-full blur-3xl animate-float" style={{ animationDelay: "-3s" }} />
-        
+        <div
+          className="absolute bottom-1/4 right-1/4 w-48 h-48 bg-white/10 rounded-full blur-3xl animate-float"
+          style={{ animationDelay: "-3s" }}
+        />
+
         <div className="relative text-center max-w-md">
           <h2 className="text-4xl font-bold text-white mb-6">
             Transform Your Business with{" "}
             <span className="text-blue-200">SISWIT</span>
           </h2>
           <p className="text-white/90 text-lg mb-8">
-            Access powerful CPQ, CLM, and CRM tools in one unified platform. 
+            Access powerful CPQ, CLM, and CRM tools in one unified platform.
             Streamline your operations and close deals faster.
           </p>
           <div className="flex justify-center gap-6 text-sm text-white/80">

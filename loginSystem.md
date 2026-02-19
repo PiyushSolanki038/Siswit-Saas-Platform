@@ -231,12 +231,12 @@ const signIn = async (email: string, password: string) => {
   }
   
   setRole(finalRole);
-  setIsApproved(roleData?.approved ?? true);
+  setIsApproved(roleData?.approved ?? false);
   
   console.log("🎉 Sign in completed. Role:", finalRole);
   
   return {
-    data: { role: finalRole, isApproved: roleData?.approved ?? true },
+    data: { role: finalRole, isApproved: roleData?.approved ?? false },
     error: null,
   };
 };

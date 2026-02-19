@@ -79,23 +79,25 @@ const Dashboard = () => {
 
       try {
         // Quotes count (open)
-        const { count: quotesCount } = await supabase
+        const { count: quotesCount, error: quotesErr } = await supabase
           .from("quotes")
           .select("id", { count: "exact" })
-          .in("status", ["draft", "pending_approval"] as string[]);
+          .in("status", ["draft", "pending_approval"] as const);
+        if (quotesErr) console.error("Failed to fetch quotes count:", quotesErr);
 
         // Active contracts (not expired/cancelled)
-        const { count: contractsCount } = await supabase
+        const { count: contractsCount, error: contractsErr } = await supabase
           .from("contracts")
           .select("id", { count: "exact" })
           .not("status", "eq", "expired")
           .neq("status", "cancelled");
+        if (contractsErr) console.error("Failed to fetch contracts count:", contractsErr);
 
         // Documents generated
-        const { count: docsCount } = await supabase
+        const { count: docsCount, error: docsErr } = await supabase
           .from("auto_documents")
           .select("id", { count: "exact" });
-
+        if (docsErr) console.error("Failed to fetch documents count:", docsErr);
         // Inventory value and Revenue MTD via server-side RPCs to reduce transferred rows
         const { data: invRpc, error: invErr } = await supabase.rpc("get_inventory_value");
         const inventoryValue = invErr ? 0 : Number(invRpc ?? 0);
@@ -151,10 +153,8 @@ const Dashboard = () => {
           setRecentActivity(mapped);
         }
       } catch (err) {
-        // ignore for now; keep defaults
-        // console.error(err);
-      }
-    };
+        console.error("Failed to fetch dashboard data:", err);
+      }    };
 
     fetchDashboard();
   }, [user]);

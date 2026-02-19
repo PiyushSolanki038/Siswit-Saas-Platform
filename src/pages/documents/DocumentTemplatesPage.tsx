@@ -156,6 +156,23 @@ const DocumentTemplatesPage = () => {
     }
   };
 
+  function formatRelativeTime(updated_at: string): string {
+    const now = new Date();
+    const updated = new Date(updated_at);
+    const diffMs = now.getTime() - updated.getTime();
+    const diffSecs = Math.floor(diffMs / 1000);
+    const diffMins = Math.floor(diffSecs / 60);
+    const diffHours = Math.floor(diffMins / 60);
+    const diffDays = Math.floor(diffHours / 24);
+
+    if (diffSecs < 60) return "just now";
+    if (diffMins < 60) return `${diffMins}m ago`;
+    if (diffHours < 24) return `${diffHours}h ago`;
+    if (diffDays < 7) return `${diffDays}d ago`;
+    if (diffDays < 30) return `${Math.floor(diffDays / 7)}w ago`;
+    return `${Math.floor(diffDays / 30)}mo ago`;
+  }
+
   return (
     <div className="space-y-6">
       <div className="flex flex-col items-start justify-between gap-4 sm:flex-row sm:items-center">
@@ -260,7 +277,7 @@ const DocumentTemplatesPage = () => {
                 </div>
                 <div className="flex items-center gap-2">
                   <Clock className="h-4 w-4" />
-                  <span>Updated recently</span>
+                  <span>Updated {formatRelativeTime(template.updated_at)}</span>
                 </div>
                 <div className="flex items-center gap-2">
                   <User className="h-4 w-4" />
@@ -315,8 +332,8 @@ const DocumentTemplatesPage = () => {
                 className="h-10 rounded-md border border-input bg-background px-3 text-sm ring-offset-background"
               >
                 {templateTypes.map((type) => (
-                  <option key={type} value={type} className="capitalize">
-                    {type}
+                  <option key={type} value={type}>
++                    {type.charAt(0).toUpperCase() + type.slice(1)}
                   </option>
                 ))}
               </select>

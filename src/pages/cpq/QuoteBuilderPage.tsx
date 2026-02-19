@@ -389,8 +389,7 @@ export default function QuoteBuilderPage() {
                   </div>
                 </div>
                 <div className="space-y-2 pt-2">
-                  <Button className="w-full h-11" onClick={() => handleSaveQuote("pending_approval")} disabled={items.length === 0}>Submit Quote</Button>
-                </div>
+                  <Button className="w-full h-11" onClick={() => handleSaveQuote("pending_approval")} disabled={(createQuoteMutation.isPending || updateQuoteMutation.isPending) || (!isEditMode && items.length === 0)}>Submit Quote</Button>                </div>
               </CardContent>
             </Card>
           </div>

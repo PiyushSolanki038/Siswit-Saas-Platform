@@ -71,12 +71,14 @@ async function syncAutoDocumentStatusFromSignatures(documentId: string): Promise
 
   let nextStatus: AutoDocument["status"] = "sent";
 
-  if (statuses.includes("pending")) {
-    nextStatus = "sent";
-  } else if (statuses.includes("rejected")) {
+  // determine the next document status by precedence:
+  // rejected > expired > pending > signed (all)
+  if (statuses.includes("rejected")) {
     nextStatus = "rejected";
   } else if (statuses.includes("expired")) {
     nextStatus = "expired";
+  } else if (statuses.includes("pending")) {
+    nextStatus = "sent";
   } else if (statuses.every((status) => status === "signed")) {
     nextStatus = "signed";
   }
@@ -401,10 +403,16 @@ export function useCreateDocumentESignature() {
 
   return useMutation({
     mutationFn: async (signature: Omit<Partial<DocumentESignature>, "id" | "created_at" | "updated_at">) => {
+      // document_id is required – don't silently insert with an empty string
+      if (!signature.document_id) {
+        throw new Error("document_id is required to create an e‑signature");
+      }
+
+      // insert the signature first
       const { data, error } = await supabase
         .from("document_esignatures")
         .insert({
-          document_id: signature.document_id || "",
+          document_id: signature.document_id,
           recipient_name: signature.recipient_name || "",
           recipient_email: signature.recipient_email || "",
           status: signature.status || "pending",
@@ -420,15 +428,17 @@ export function useCreateDocumentESignature() {
         throw error;
       }
 
-      if (signature.document_id) {
-        const { error: updateDocError } = await supabase
-          .from("auto_documents")
-          .update({ status: "sent" })
-          .eq("id", signature.document_id);
+      // conditionally update document state so we don't regress a terminal status
+      const { error: updateDocError } = await supabase
+        .from("auto_documents")
+        .update({ status: "sent" })
+        .eq("id", signature.document_id)
+        .eq("status", "draft");
 
-        if (updateDocError) {
-          throw updateDocError;
-        }
+      if (updateDocError) {
+        // the insert succeeded but the document update failed;
+        // the conditional eq prevents changing a non‑draft document
+        throw updateDocError;
       }
 
       return data as DocumentESignature;
