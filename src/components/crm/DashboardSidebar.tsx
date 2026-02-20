@@ -88,16 +88,15 @@ export function DashboardSidebar() {
       setCollapsed(window.innerWidth < 768);
     };
 
-    // Run once on mount
     handleResize();
-
-    // Listen for resize
     window.addEventListener("resize", handleResize);
-
     return () => window.removeEventListener("resize", handleResize);
   }, []);
 
   const location = useLocation();
+
+  const linkBase =
+    "flex items-center py-2 rounded-lg transition-colors mx-2";
 
   return (
     <aside
@@ -109,17 +108,22 @@ export function DashboardSidebar() {
       {/* Logo */}
       <div className="h-16 flex items-center justify-between px-4 border-b border-border">
         {!collapsed && (
-          <span className="text-xl font-bold text-foreground">SIS
-            <span className="text-gradient">WIT</span>
+          <span className="text-xl font-bold text-foreground">
+            SIS<span className="text-gradient">WIT</span>
           </span>
         )}
+
         <Button
           variant="ghost"
           size="icon"
           onClick={() => setCollapsed(!collapsed)}
           className="ml-auto"
         >
-          {collapsed ? <ChevronRight className="h-4 w-4" /> : <ChevronLeft className="h-4 w-4" />}
+          {collapsed ? (
+            <ChevronRight className="h-4 w-4" />
+          ) : (
+            <ChevronLeft className="h-4 w-4" />
+          )}
         </Button>
       </div>
 
@@ -127,21 +131,28 @@ export function DashboardSidebar() {
       <nav className="flex-1 overflow-y-auto py-4">
         {menuItems.map((section, idx) => (
           <div key={idx} className="mb-4">
-            {"path" in section ? (
+            {"path" in section && section.path ? (
               <NavLink
                 to={section.path}
                 end
                 className={({ isActive }) =>
                   cn(
-                    "flex items-center gap-3 px-4 py-2.5 mx-2 rounded-lg transition-colors",
+                    linkBase,
+                    collapsed ? "justify-center px-2" : "gap-3 px-4",
                     isActive
                       ? "bg-primary text-primary-foreground"
                       : "text-muted-foreground hover:text-foreground hover:bg-muted"
                   )
                 }
               >
-                <section.icon className="h-5 w-5 flex-shrink-0" />
-                {!collapsed && <span className="text-sm font-medium">{section.title}</span>}
+                {/* ICON WRAPPER (fix centering) */}
+                <div className="h-5 w-5 flex items-center justify-center flex-shrink-0">
+                  <section.icon className="h-5 w-5" />
+                </div>
+
+                {!collapsed && (
+                  <span className="text-sm font-medium">{section.title}</span>
+                )}
               </NavLink>
             ) : (
               <>
@@ -150,23 +161,31 @@ export function DashboardSidebar() {
                     {section.title}
                   </h3>
                 )}
+
                 <div className="space-y-1">
                   {section.items?.map((item) => (
                     <NavLink
                       key={item.path}
                       to={item.path}
-                      end  /* <--- This is the fix added here */
+                      end
                       className={({ isActive }) =>
                         cn(
-                          "flex items-center gap-3 px-4 py-2 mx-2 rounded-lg transition-colors",
+                          linkBase,
+                          collapsed ? "justify-center px-2" : "gap-3 px-4",
                           isActive
                             ? "bg-primary text-primary-foreground"
                             : "text-muted-foreground hover:text-foreground hover:bg-muted"
                         )
                       }
                     >
-                      <item.icon className="h-4 w-4 flex-shrink-0" />
-                      {!collapsed && <span className="text-sm">{item.title}</span>}
+                      {/* ICON WRAPPER (fix centering) */}
+                      <div className="h-4 w-4 flex items-center justify-center flex-shrink-0">
+                        <item.icon className="h-4 w-4" />
+                      </div>
+
+                      {!collapsed && (
+                        <span className="text-sm">{item.title}</span>
+                      )}
                     </NavLink>
                   ))}
                 </div>
@@ -183,14 +202,18 @@ export function DashboardSidebar() {
           end
           className={({ isActive }) =>
             cn(
-              "flex items-center gap-3 px-4 py-2 rounded-lg transition-colors",
+              linkBase,
+              collapsed ? "justify-center px-2" : "gap-3 px-4",
               isActive
                 ? "bg-primary text-primary-foreground"
                 : "text-muted-foreground hover:text-foreground hover:bg-muted"
             )
           }
         >
-          <Settings className="h-4 w-4 flex-shrink-0" />
+          <div className="h-4 w-4 flex items-center justify-center flex-shrink-0">
+            <Settings className="h-4 w-4" />
+          </div>
+
           {!collapsed && <span className="text-sm">Settings</span>}
         </NavLink>
       </div>

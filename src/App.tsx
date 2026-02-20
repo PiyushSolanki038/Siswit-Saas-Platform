@@ -21,6 +21,7 @@ import Contact from "./pages/Contact";
 import Auth from "./pages/Auth";
 import Unauthorized from "./pages/Unauthorized";
 import NotFound from "./pages/NotFound";
+import PendingApproval from "./pages/PendingApproval"
 
 // Dashboard Base & Admin
 import Dashboard from "./pages/Dashboard";
@@ -85,6 +86,7 @@ const App = () => (
               <Route path="/contact" element={<Contact />} />
               <Route path="/auth" element={<Auth />} />
               <Route path="/unauthorized" element={<Unauthorized />} />
+              <Route path="/pending-approval" element={<PendingApproval />} />
 
               {/* ---------------- ADMIN ---------------- */}
               <Route

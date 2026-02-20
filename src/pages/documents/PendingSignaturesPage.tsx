@@ -195,15 +195,7 @@ const PendingSignaturesPage = () => {
                           {signature.document?.type || "document"}
                         </span>
                       </div>
-                      <Button
-                        variant="outline"
-                        size="sm"
-                        onClick={() => handleRemind(signature.id)}
-                        disabled={sendReminderMutation.isPending}
-                      >
-                        <Mail className="mr-1 h-4 w-4" />
-                        Remind
-                      </Button>
+                      
                       <div className="text-sm text-muted-foreground">
                         Sent{" "}
                         {formatDistanceToNow(new Date(signature.created_at), {

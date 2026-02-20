@@ -13,7 +13,6 @@ import {
   LayoutDashboard,
 } from "lucide-react";
 import { supabase } from "@/integrations/supabase/client";
-import { AppRole } from "@/types/roles";
 
 import { Button } from "@/components/ui/button";
 import {
@@ -21,11 +20,19 @@ import {
   CardContent,
   CardHeader,
   CardTitle,
-  CardDescription,
 } from "@/components/ui/card";
 import { Input } from "@/components/ui/input";
 import { useToast } from "@/hooks/use-toast";
 import { Header } from "@/components/layout/Header";
+
+import {
+  Table,
+  TableBody,
+  TableCell,
+  TableHead,
+  TableHeader,
+  TableRow,
+} from "@/components/ui/table";
 
 import {
   BarChart,
@@ -39,36 +46,13 @@ import {
 } from "recharts";
 
 interface PendingEmployee {
-  id: string;
+  request_id: string; // Matches 'request_id' alias in your SQL view
   user_id: string;
   email: string;
   first_name: string;
   last_name: string;
   created_at: string;
   status: string;
-}
-
-interface UserRoleRow {
-  user_id: string;
-  role: string;
-  approved: boolean;
-  created_at: string;
-}
-
-interface SignupRequestRow {
-  id: string;
-  user_id: string;
-  email: string;
-  first_name: string | null;
-  last_name: string | null;
-  created_at: string;
-  status: string;
-}
-
-interface ProfileRow {
-  user_id: string;
-  first_name: string | null;
-  last_name: string | null;
 }
 
 interface AdminStats {
@@ -98,117 +82,42 @@ export default function AdminDashboard() {
 
   const fetchData = useCallback(async () => {
     setLoading(true);
-
     try {
-      const [
-        totalUsersResult,
-        activeEmployeesResult,
-        rejectedRequestsResult,
-        pendingRolesResult,
-      ] = await Promise.all([
-        supabase.from("user_roles").select("*", { count: "exact", head: true }),
-        supabase
-          .from("user_roles")
-          .select("*", { count: "exact", head: true })
-          .eq("role", AppRole.EMPLOYEE)
-          .eq("approved", true),
-        supabase
-          .from("signup_requests")
-          .select("*", { count: "exact", head: true })
-          .eq("status", "rejected"),
-        supabase
-          .from("user_roles")
-          .select("user_id, role, approved, created_at")
-          .eq("role", AppRole.EMPLOYEE)
-          .eq("approved", false),
-      ]);
-
-      if (totalUsersResult.error) throw totalUsersResult.error;
-      if (activeEmployeesResult.error) throw activeEmployeesResult.error;
-      if (rejectedRequestsResult.error) throw rejectedRequestsResult.error;
-      if (pendingRolesResult.error) throw pendingRolesResult.error;
-
-      const pendingRoles = (pendingRolesResult.data ?? []) as UserRoleRow[];
-      const pendingUserIds = pendingRoles.map((row) => row.user_id);
-
-      let requestRows: SignupRequestRow[] = [];
-      let profileRows: ProfileRow[] = [];
-
-      if (pendingUserIds.length > 0) {
-        const [requestResult, profileResult] = await Promise.all([
+      // 1. Fetch Stats in parallel
+      const [totalUsersRes, activeEmployeesRes, rejectedRequestsRes, pendingViewRes] =
+        await Promise.all([
+          supabase.from("user_roles").select("*", { count: "exact", head: true }),
+          supabase
+            .from("user_roles")
+            .select("*", { count: "exact", head: true })
+            .eq("role", "employee")
+            .eq("approved", true),
           supabase
             .from("signup_requests")
-            .select(
-              "id, user_id, email, first_name, last_name, created_at, status",
-            )
-            .in("user_id", pendingUserIds),
-          supabase
-            .from("profiles")
-            .select("user_id, first_name, last_name")
-            .in("user_id", pendingUserIds),
+            .select("*", { count: "exact", head: true })
+            .eq("status", "rejected"),
+          // 2. Fetch the joined data directly from your new VIEW
+          supabase.from("admin_pending_approvals").select("*"),
         ]);
 
-        if (requestResult.error) throw requestResult.error;
-        if (profileResult.error) throw profileResult.error;
+      if (pendingViewRes.error) throw pendingViewRes.error;
 
-        requestRows = (requestResult.data ?? []) as SignupRequestRow[];
-        profileRows = (profileResult.data ?? []) as ProfileRow[];
-      }
+      const pendingData = (pendingViewRes.data as PendingEmployee[]) || [];
 
-      const profileByUser = new Map(
-        profileRows.map((profile) => [profile.user_id, profile]),
-      );
-
-      const pendingRequestByUser = new Map(
-        requestRows
-          .filter((request) => request.status === "pending")
-          .map((request) => [request.user_id, request]),
-      );
-
-      const pendingEmployees = pendingRoles
-        .map((roleRow) => {
-          const request = pendingRequestByUser.get(roleRow.user_id);
-          if (!request) {
-            return null;
-          }
-
-          const profile = profileByUser.get(roleRow.user_id);
-          const firstName = request.first_name ?? profile?.first_name ?? "";
-          const lastName = request.last_name ?? profile?.last_name ?? "";
-
-          return {
-            id: request.id,
-            user_id: roleRow.user_id,
-            email: request.email,
-            first_name: firstName,
-            last_name: lastName,
-            created_at: request.created_at,
-            status: request.status,
-          };
-        })
-        .filter((value): value is PendingEmployee => value !== null)
-        .sort(
-          (a, b) =>
-            new Date(b.created_at).getTime() - new Date(a.created_at).getTime(),
-        );
-
-      setRequests(pendingEmployees);
+      setRequests(pendingData);
       setStats({
-        totalUsers: totalUsersResult.count ?? 0,
-        pendingRequests: pendingEmployees.length,
-        activeEmployees: activeEmployeesResult.count ?? 0,
-        rejectedRequests: rejectedRequestsResult.count ?? 0,
+        totalUsers: totalUsersRes.count ?? 0,
+        pendingRequests: pendingData.length,
+        activeEmployees: activeEmployeesRes.count ?? 0,
+        rejectedRequests: rejectedRequestsRes.count ?? 0,
       });
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error
-          ? error.message
-          : "Unable to load admin dashboard data.";
 
+    } catch (error: any) {
+      console.error("error in fetchData", error);
       toast({
         variant: "destructive",
         title: "Error fetching data",
-        description: message,
+        description: error.message || "Unable to load admin dashboard data.",
       });
     } finally {
       setLoading(false);
@@ -216,27 +125,36 @@ export default function AdminDashboard() {
   }, [toast]);
 
   useEffect(() => {
-    void fetchData();
+    fetchData();
   }, [fetchData]);
 
   const handleApprove = async (request: PendingEmployee) => {
     try {
-      const { error } = await supabase.rpc("approve_employee", {
-        p_user_id: request.user_id,
-      });
+      // Update role to approved
+      const { error: roleError } = await supabase
+        .from("user_roles")
+        .update({ approved: true })
+        .eq("user_id", request.user_id)
+        .eq("role", "employee");
 
-      if (error) throw error;
+      if (roleError) throw roleError;
+
+      // Update signup request status
+      const { error: requestError } = await supabase
+        .from("signup_requests")
+        .update({ status: "approved" })
+        .eq("user_id", request.user_id);
+
+      if (requestError) throw requestError;
 
       toast({
         title: "User Approved",
         description: `${request.email} granted employee access.`,
       });
 
-      await fetchData();
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Approval failed.";
-      toast({ variant: "destructive", title: "Failed", description: message });
+      fetchData();
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Failed", description: error.message });
     }
   };
 
@@ -244,22 +162,22 @@ export default function AdminDashboard() {
     if (!confirm(`Reject ${request.email}?`)) return;
 
     try {
-      const { error } = await supabase.rpc("reject_employee", {
-        p_user_id: request.user_id,
-      });
+      await Promise.all([
+        supabase
+          .from("signup_requests")
+          .update({ status: "rejected" })
+          .eq("user_id", request.user_id),
+        supabase
+          .from("user_roles")
+          .delete()
+          .eq("user_id", request.user_id)
+          .eq("role", "employee"),
+      ]);
 
-      if (error) throw error;
-
-      toast({
-        title: "Request Rejected",
-        description: `${request.email} remains blocked until approved.`,
-      });
-
-      await fetchData();
-    } catch (error: unknown) {
-      const message =
-        error instanceof Error ? error.message : "Rejection failed.";
-      toast({ variant: "destructive", title: "Failed", description: message });
+      toast({ title: "Request Rejected", description: `${request.email} request rejected.` });
+      fetchData();
+    } catch (error: any) {
+      toast({ variant: "destructive", title: "Failed", description: error.message });
     }
   };
 
@@ -268,16 +186,12 @@ export default function AdminDashboard() {
     { name: "Pending", value: stats.pendingRequests },
     { name: "Rejected", value: stats.rejectedRequests },
   ];
-  const CHART_COLORS = [
-    "hsl(142, 71%, 45%)",
-    "hsl(45, 93%, 47%)",
-    "hsl(0, 72%, 50%)",
-  ];
+
+  const CHART_COLORS = ["#22c55e", "#f59e0b", "#ef4444"];
 
   return (
     <div className="min-h-screen bg-background flex flex-col">
       <Header />
-
       <div className="flex flex-1 pt-16 lg:pt-20">
         <aside className="hidden lg:flex w-64 flex-col border-r bg-card h-[calc(100vh-5rem)] sticky top-20">
           <div className="p-6">
@@ -292,9 +206,7 @@ export default function AdminDashboard() {
                 key={item.name}
                 variant={item.active ? "secondary" : "ghost"}
                 className={`w-full justify-start gap-3 ${
-                  item.active
-                    ? "bg-primary/10 text-primary font-medium"
-                    : "text-muted-foreground"
+                  item.active ? "bg-primary/10 text-primary font-medium" : "text-muted-foreground"
                 }`}
                 asChild
               >
@@ -305,220 +217,82 @@ export default function AdminDashboard() {
               </Button>
             ))}
           </nav>
-          <div className="p-4 border-t">
-            <div className="bg-muted/50 rounded-lg p-4">
-              <p className="text-xs font-medium text-muted-foreground mb-1">
-                System Status
-              </p>
-              <div className="flex items-center gap-2 text-sm text-green-600 font-medium">
-                <Activity className="h-4 w-4" />
-                Operational
-              </div>
-            </div>
-          </div>
         </aside>
 
         <main className="flex-1 p-4 md:p-8 overflow-y-auto">
           <div className="max-w-7xl mx-auto space-y-6">
             <div className="flex flex-col gap-2 md:flex-row md:items-center md:justify-between">
               <div>
-                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">
-                  Admin Dashboard
-                </h1>
-                <p className="text-muted-foreground">
-                  Overview of employee access approvals and account status.
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <div className="relative">
-                  <Search className="absolute left-2.5 top-2.5 h-4 w-4 text-muted-foreground" />
-                  <Input
-                    type="search"
-                    placeholder="Search users..."
-                    className="pl-8 w-[200px] lg:w-[300px]"
-                  />
-                </div>
-                <Button>
-                  <Users className="mr-2 h-4 w-4" />
-                  Add User
-                </Button>
+                <h1 className="text-2xl md:text-3xl font-bold tracking-tight">Admin Dashboard</h1>
+                <p className="text-muted-foreground">Overview of employee access and system health.</p>
               </div>
             </div>
 
             <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Total Users
-                  </CardTitle>
-                  <Users className="h-4 w-4 text-muted-foreground" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">{stats.totalUsers}</div>
-                  <p className="text-xs text-muted-foreground">
-                    Role rows in user_roles
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Active Employees
-                  </CardTitle>
-                  <CheckCircle2 className="h-4 w-4 text-green-600" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {stats.activeEmployees}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    role=employee and approved=true
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Pending Requests
-                  </CardTitle>
-                  <Clock className="h-4 w-4 text-orange-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {stats.pendingRequests}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    role=employee, approved=false, pending request
-                  </p>
-                </CardContent>
-              </Card>
-              <Card>
-                <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-                  <CardTitle className="text-sm font-medium">
-                    Rejected
-                  </CardTitle>
-                  <XCircle className="h-4 w-4 text-red-500" />
-                </CardHeader>
-                <CardContent>
-                  <div className="text-2xl font-bold">
-                    {stats.rejectedRequests}
-                  </div>
-                  <p className="text-xs text-muted-foreground">
-                    Historical rejected requests
-                  </p>
-                </CardContent>
-              </Card>
+              <StatCard title="Total Users" value={stats.totalUsers} icon={Users} desc="Registered" />
+              <StatCard title="Active Employees" value={stats.activeEmployees} icon={CheckCircle2} desc="Approved" color="text-green-600" />
+              <StatCard title="Pending" value={stats.pendingRequests} icon={Clock} desc="Reviewing" color="text-orange-500" />
+              <StatCard title="Rejected" value={stats.rejectedRequests} icon={XCircle} desc="Denied" color="text-red-500" />
             </div>
 
             <div className="grid gap-4 md:grid-cols-7">
               <Card className="col-span-7 lg:col-span-4">
-                <CardHeader>
-                  <CardTitle>Pending Employee Approvals</CardTitle>
-                  <CardDescription>
-                    Employees are blocked until role approval is granted.
-                  </CardDescription>
-                </CardHeader>
+                <CardHeader><CardTitle>Pending Employee Approvals</CardTitle></CardHeader>
                 <CardContent>
                   {loading ? (
-                    <div className="h-40 flex items-center justify-center text-muted-foreground">
-                      Loading requests...
-                    </div>
+                    <div className="h-40 flex items-center justify-center">Loading view...</div>
                   ) : requests.length === 0 ? (
                     <div className="h-40 flex flex-col items-center justify-center text-muted-foreground bg-muted/20 rounded-md">
                       <CheckCircle2 className="h-8 w-8 mb-2 text-green-500" />
-                      <p>No pending employee approvals.</p>
+                      <p>All clear! No pending requests found in view.</p>
                     </div>
                   ) : (
-                    <div className="space-y-4">
-                      {requests.map((employee) => (
-                        <div
-                          key={employee.id}
-                          className="flex items-center justify-between p-4 border rounded-lg bg-card hover:bg-muted/50 transition-colors"
-                        >
-                          <div className="flex items-center gap-4">
-                            <div className="h-10 w-10 rounded-full bg-primary/10 flex items-center justify-center">
-                              <span className="font-semibold text-primary">
-                                {(
-                                  employee.first_name?.[0] ||
-                                  employee.email[0] ||
-                                  "U"
-                                ).toUpperCase()}
+                    <Table>
+                      <TableHeader>
+                        <TableRow>
+                          <TableHead>Name</TableHead>
+                          <TableHead>Email</TableHead>
+                          <TableHead>Status</TableHead>
+                          <TableHead className="text-right">Actions</TableHead>
+                        </TableRow>
+                      </TableHeader>
+                      <TableBody>
+                        {requests.map((emp) => (
+                          <TableRow key={emp.user_id}>
+                            <TableCell className="font-medium">{emp.first_name} {emp.last_name}</TableCell>
+                            <TableCell>{emp.email}</TableCell>
+                            <TableCell>
+                              <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-medium bg-yellow-100 text-yellow-800">
+                                {emp.status}
                               </span>
-                            </div>
-                            <div>
-                              <p className="font-medium">
-                                {employee.first_name} {employee.last_name}
-                              </p>
-                              <p className="text-sm text-muted-foreground">
-                                {employee.email}
-                              </p>
-                            </div>
-                          </div>
-                          <div className="flex gap-2">
-                            <Button
-                              size="sm"
-                              variant="outline"
-                              className="text-destructive hover:bg-destructive/10"
-                              onClick={() => handleReject(employee)}
-                            >
-                              Reject
-                            </Button>
-                            <Button
-                              size="sm"
-                              onClick={() => handleApprove(employee)}
-                            >
-                              Approve
-                            </Button>
-                          </div>
-                        </div>
-                      ))}
-                    </div>
+                            </TableCell>
+                            <TableCell className="text-right">
+                              <div className="flex justify-end gap-2">
+                                <Button size="sm" variant="outline" className="text-destructive" onClick={() => handleReject(emp)}>Reject</Button>
+                                <Button size="sm" onClick={() => handleApprove(emp)}>Approve</Button>
+                              </div>
+                            </TableCell>
+                          </TableRow>
+                        ))}
+                      </TableBody>
+                    </Table>
                   )}
                 </CardContent>
               </Card>
 
               <Card className="col-span-7 lg:col-span-3">
-                <CardHeader>
-                  <CardTitle>User Status Distribution</CardTitle>
-                  <CardDescription>
-                    Employee approvals and request history overview.
-                  </CardDescription>
-                </CardHeader>
+                <CardHeader><CardTitle>Distribution</CardTitle></CardHeader>
                 <CardContent>
                   <div className="h-[300px]">
                     <ResponsiveContainer width="100%" height="100%">
                       <BarChart data={chartData}>
-                        <CartesianGrid
-                          strokeDasharray="3 3"
-                          className="stroke-muted"
-                          vertical={false}
-                        />
-                        <XAxis
-                          dataKey="name"
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fill: "hsl(var(--muted-foreground))" }}
-                          dy={10}
-                        />
-                        <YAxis
-                          axisLine={false}
-                          tickLine={false}
-                          tick={{ fill: "hsl(var(--muted-foreground))" }}
-                        />
-                        <RechartsTooltip
-                          cursor={{ fill: "hsl(var(--muted)/0.4)" }}
-                          contentStyle={{
-                            backgroundColor: "hsl(var(--card))",
-                            border: "1px solid hsl(var(--border))",
-                            borderRadius: "var(--radius)",
-                          }}
-                        />
+                        <CartesianGrid strokeDasharray="3 3" vertical={false} className="stroke-muted" />
+                        <XAxis dataKey="name" axisLine={false} tickLine={false} />
+                        <YAxis axisLine={false} tickLine={false} />
+                        <RechartsTooltip cursor={{ fill: "hsl(var(--muted)/0.4)" }} />
                         <Bar dataKey="value" radius={[4, 4, 0, 0]}>
-                          {chartData.map((_, index) => (
-                            <Cell
-                              key={`cell-${index}`}
-                              fill={CHART_COLORS[index % CHART_COLORS.length]}
-                            />
+                          {chartData.map((_, i) => (
+                            <Cell key={i} fill={CHART_COLORS[i]} />
                           ))}
                         </Bar>
                       </BarChart>
@@ -531,5 +305,20 @@ export default function AdminDashboard() {
         </main>
       </div>
     </div>
+  );
+}
+
+function StatCard({ title, value, icon: Icon, desc, color }: any) {
+  return (
+    <Card>
+      <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+        <CardTitle className="text-sm font-medium">{title}</CardTitle>
+        <Icon className={`h-4 w-4 ${color || "text-muted-foreground"}`} />
+      </CardHeader>
+      <CardContent>
+        <div className="text-2xl font-bold">{value}</div>
+        <p className="text-xs text-muted-foreground">{desc}</p>
+      </CardContent>
+    </Card>
   );
 }
