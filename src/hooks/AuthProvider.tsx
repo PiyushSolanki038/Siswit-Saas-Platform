@@ -17,6 +17,10 @@ import { normalizeRole } from "@/types/roles";
 
 const ROLE_CACHE_KEY_PREFIX = "org_role_";
 const AUTH_ROLE_LOOKUP_TIMEOUT_MS = Number(import.meta.env.VITE_AUTH_ROLE_LOOKUP_TIMEOUT_MS ?? "5000");
+const INVITE_EMAILS_DISABLED = (() => {
+  const raw = String(import.meta.env.VITE_DISABLE_INVITE_EMAILS ?? "").trim().toLowerCase();
+  return raw === "1" || raw === "true" || raw === "yes";
+})();
 
 type MembershipLookupRow = {
   id: string;
@@ -46,6 +50,33 @@ type OrganizationLookupRow = {
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return String(error);
+}
+
+async function getFunctionInvokeErrorMessage(error: unknown): Promise<string> {
+  const baseMessage = getErrorMessage(error);
+  const maybeError = error as { context?: unknown } | null;
+  const context = maybeError?.context;
+
+  if (!(context instanceof Response)) {
+    return baseMessage;
+  }
+
+  try {
+    const cloned = context.clone();
+    const json = (await cloned.json().catch(() => null)) as { error?: unknown } | null;
+    if (json && typeof json.error === "string" && json.error.trim()) {
+      return `${baseMessage}: ${json.error}`;
+    }
+
+    const text = await context.text();
+    if (text.trim()) {
+      return `${baseMessage}: ${text}`;
+    }
+  } catch {
+    // Fall back to base message
+  }
+
+  return baseMessage;
 }
 
 function splitName(fullName: string): { firstName: string; lastName: string } {
@@ -102,6 +133,11 @@ function buildInviteToken(): string {
   const randomA = crypto.getRandomValues(new Uint32Array(2));
   const randomB = crypto.getRandomValues(new Uint32Array(2));
   return `${randomA[0].toString(16)}${randomA[1].toString(16)}${randomB[0].toString(16)}${randomB[1].toString(16)}`;
+}
+
+function getAuthEmailRedirectTo(): string {
+  if (typeof window === "undefined") return "";
+  return `${window.location.origin}/auth/sign-in`;
 }
 
 function membershipPriority(role: string): number {
@@ -232,7 +268,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updated_at: new Date().toISOString(),
       };
 
-      await unsafeSupabase.from("profiles").upsert(payload, { onConflict: "user_id" });
+      const { error } = await unsafeSupabase.from("profiles").upsert(payload, { onConflict: "user_id" });
+      if (error) {
+        throw new Error(`Unable to save profile: ${error.message}`);
+      }
     },
     [unsafeSupabase],
   );
@@ -279,7 +318,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         return null;
       }
 
-      await unsafeSupabase.from("organization_subscriptions").insert({
+      const { error: subscriptionError } = await unsafeSupabase.from("organization_subscriptions").insert({
         organization_id: data.id,
         plan_type: "starter",
         status: "trial",
@@ -292,7 +331,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         updated_at: new Date().toISOString(),
       });
 
-      await unsafeSupabase.from("organization_memberships").insert({
+      if (subscriptionError) {
+        throw new Error(`Unable to create organization subscription: ${subscriptionError.message}`);
+      }
+
+      const { error: membershipError } = await unsafeSupabase.from("organization_memberships").insert({
         organization_id: data.id,
         user_id: userId,
         email: input.email,
@@ -303,6 +346,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         created_at: new Date().toISOString(),
         updated_at: new Date().toISOString(),
       });
+
+      if (membershipError) {
+        throw new Error(`Unable to create owner membership: ${membershipError.message}`);
+      }
 
       return { id: data.id, slug: data.slug };
     },
@@ -318,6 +365,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: input.email,
           password: input.password,
           options: {
+            emailRedirectTo: getAuthEmailRedirectTo(),
             data: {
               full_name: input.ownerFullName,
               signup_type: "organization_owner",
@@ -380,6 +428,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: input.email,
           password: input.password,
           options: {
+            emailRedirectTo: getAuthEmailRedirectTo(),
             data: {
               full_name: input.fullName,
               signup_type: "client_self",
@@ -398,7 +447,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         await upsertProfile(data.user.id, input.fullName);
 
-        await unsafeSupabase.from("organization_memberships").insert({
+        const { error: membershipError } = await unsafeSupabase.from("organization_memberships").insert({
           organization_id: organization.id,
           user_id: data.user.id,
           email: input.email,
@@ -409,6 +458,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           created_at: new Date().toISOString(),
           updated_at: new Date().toISOString(),
         });
+
+        if (membershipError) {
+          return { error: `Unable to create client membership: ${membershipError.message}` };
+        }
 
         return { error: null };
       } catch (error: unknown) {
@@ -468,6 +521,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: invitation.invited_email,
           password: input.password,
           options: {
+            emailRedirectTo: getAuthEmailRedirectTo(),
             data: {
               full_name: input.fullName,
               signup_type: "employee_invitation",
@@ -485,7 +539,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         await upsertProfile(data.user.id, input.fullName);
 
-        await unsafeSupabase.from("organization_memberships").insert({
+        const { error: membershipError } = await unsafeSupabase.from("organization_memberships").insert({
           organization_id: invitation.organization_id,
           user_id: data.user.id,
           email: invitation.invited_email,
@@ -499,7 +553,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           updated_at: new Date().toISOString(),
         });
 
-        await unsafeSupabase
+        if (membershipError) {
+          return { error: `Unable to create employee membership: ${membershipError.message}` };
+        }
+
+        const { error: invitationUpdateError } = await unsafeSupabase
           .from("employee_invitations")
           .update({
             status: "accepted",
@@ -507,6 +565,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             updated_at: new Date().toISOString(),
           })
           .eq("id", invitation.id);
+
+        if (invitationUpdateError) {
+          return { error: `Membership created, but invitation status update failed: ${invitationUpdateError.message}` };
+        }
 
         return { error: null };
       } catch (error: unknown) {
@@ -536,6 +598,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           email: invitation.invited_email,
           password: input.password,
           options: {
+            emailRedirectTo: getAuthEmailRedirectTo(),
             data: {
               full_name: input.fullName,
               signup_type: "client_invitation",
@@ -553,7 +616,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         await upsertProfile(data.user.id, input.fullName);
 
-        await unsafeSupabase.from("organization_memberships").insert({
+        const { error: membershipError } = await unsafeSupabase.from("organization_memberships").insert({
           organization_id: invitation.organization_id,
           user_id: data.user.id,
           email: invitation.invited_email,
@@ -565,7 +628,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           updated_at: new Date().toISOString(),
         });
 
-        await unsafeSupabase
+        if (membershipError) {
+          return { error: `Unable to create client membership: ${membershipError.message}` };
+        }
+
+        const { error: invitationUpdateError } = await unsafeSupabase
           .from("client_invitations")
           .update({
             status: "accepted",
@@ -573,6 +640,10 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             updated_at: new Date().toISOString(),
           })
           .eq("id", invitation.id);
+
+        if (invitationUpdateError) {
+          return { error: `Membership created, but invitation status update failed: ${invitationUpdateError.message}` };
+        }
 
         return { error: null };
       } catch (error: unknown) {
@@ -585,7 +656,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const inviteEmployee = useCallback(
-    async (input: InviteEmployeeInput): Promise<{ error: string | null; invitationUrl?: string }> => {
+    async (
+      input: InviteEmployeeInput,
+    ): Promise<{ error: string | null; invitationUrl?: string; emailError?: string | null }> => {
       try {
         const token = buildInviteToken();
         const tokenHash = await hashToken(token);
@@ -621,19 +694,34 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const invitationUrl = `${window.location.origin}/auth/accept-invitation?token=${encodeURIComponent(token)}`;
 
-        await supabase.functions.invoke("send-employee-invitation", {
+        if (INVITE_EMAILS_DISABLED) {
+          return { error: null, invitationUrl, emailError: null };
+        }
+
+        const { error: emailInvokeError } = await supabase.functions.invoke("send-employee-invitation", {
           body: {
             recipientEmail: input.email,
+            organizationId: input.organizationId,
             organizationName: organization?.name ?? "Organization",
             organizationCode: organization?.org_code ?? "ORG",
             roleLabel: input.customRoleName || input.role,
             inviterName: user?.email ?? "Admin",
             expiresAt: input.expiresAt,
             invitationUrl,
+            authRedirectTo: `${window.location.origin}/auth/sign-in`,
           },
         });
 
-        return { error: null, invitationUrl };
+        if (emailInvokeError) {
+          const detailedMessage = await getFunctionInvokeErrorMessage(emailInvokeError);
+          return {
+            error: null,
+            invitationUrl,
+            emailError: detailedMessage || "Failed to send invitation email.",
+          };
+        }
+
+        return { error: null, invitationUrl, emailError: null };
       } catch (error: unknown) {
         return { error: getErrorMessage(error) };
       }
@@ -642,7 +730,9 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 
   const inviteClient = useCallback(
-    async (input: InviteClientInput): Promise<{ error: string | null; invitationUrl?: string }> => {
+    async (
+      input: InviteClientInput,
+    ): Promise<{ error: string | null; invitationUrl?: string; emailError?: string | null }> => {
       try {
         const token = buildInviteToken();
         const tokenHash = await hashToken(token);
@@ -675,18 +765,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         const invitationUrl = `${window.location.origin}/auth/accept-client-invitation?token=${encodeURIComponent(token)}`;
 
-        await supabase.functions.invoke("send-client-invitation", {
+        if (INVITE_EMAILS_DISABLED) {
+          return { error: null, invitationUrl, emailError: null };
+        }
+
+        const { error: emailInvokeError } = await supabase.functions.invoke("send-client-invitation", {
           body: {
             recipientEmail: input.email,
+            organizationId: input.organizationId,
             organizationName: organization?.name ?? "Organization",
             organizationCode: organization?.org_code ?? "ORG",
             inviterName: user?.email ?? "Admin",
             expiresAt: input.expiresAt,
             invitationUrl,
+            authRedirectTo: `${window.location.origin}/auth/sign-in`,
           },
         });
 
-        return { error: null, invitationUrl };
+        if (emailInvokeError) {
+          const detailedMessage = await getFunctionInvokeErrorMessage(emailInvokeError);
+          return {
+            error: null,
+            invitationUrl,
+            emailError: detailedMessage || "Failed to send invitation email.",
+          };
+        }
+
+        return { error: null, invitationUrl, emailError: null };
       } catch (error: unknown) {
         return { error: getErrorMessage(error) };
       }
@@ -763,6 +868,24 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }
   }, []);
 
+  const claimPendingInvitations = useCallback(async (): Promise<number> => {
+    const { data, error } = await unsafeSupabase.rpc("claim_pending_invitations");
+    if (error) {
+      throw new Error(error.message);
+    }
+
+    const parsed =
+      typeof data === "number"
+        ? data
+        : typeof data === "string"
+          ? Number(data)
+          : Array.isArray(data) && data.length > 0
+            ? Number(data[0])
+            : 0;
+
+    return Number.isFinite(parsed) ? parsed : 0;
+  }, [unsafeSupabase]);
+
   const signIn = useCallback(
     async (email: string, password: string, rememberMe = true) => {
       try {
@@ -779,7 +902,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           return { error: "User not found", role: null as AuthRole };
         }
 
-        const nextRole = await getUserRole(data.user.id);
+        let nextRole = await getUserRole(data.user.id);
+        if (!nextRole) {
+          try {
+            await claimPendingInvitations();
+          } catch {
+            // Non-blocking: keep original fallback behavior below.
+          }
+
+          nextRole = await getUserRole(data.user.id);
+        }
+
         if (!nextRole) {
           return { error: "No organization access assigned", role: null as AuthRole };
         }
@@ -796,7 +929,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     },
-    [cacheRole, getUserRole],
+    [cacheRole, claimPendingInvitations, getUserRole],
   );
 
   const signUp = useCallback(
@@ -852,7 +985,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setUser(nextSession.user);
         setSession(nextSession);
 
-        const nextRole = await getUserRole(nextSession.user.id);
+        let nextRole = await getUserRole(nextSession.user.id);
+        if (!nextRole) {
+          try {
+            await claimPendingInvitations();
+            nextRole = await getUserRole(nextSession.user.id);
+          } catch {
+            // Keep best-effort role discovery only.
+          }
+        }
         if (!mounted) return;
 
         setRole(nextRole);
@@ -888,7 +1029,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       setUser(nextSession.user);
       setSession(nextSession);
 
-      const nextRole = await getUserRole(nextSession.user.id);
+      let nextRole = await getUserRole(nextSession.user.id);
+      if (!nextRole) {
+        try {
+          await claimPendingInvitations();
+          nextRole = await getUserRole(nextSession.user.id);
+        } catch {
+          // Keep best-effort role discovery only.
+        }
+      }
       if (!mounted) return;
 
       setRole(nextRole);
@@ -900,7 +1049,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       mounted = false;
       subscription.unsubscribe();
     };
-  }, [cacheRole, getUserRole]);
+  }, [cacheRole, claimPendingInvitations, getUserRole]);
 
   return (
     <AuthContext.Provider

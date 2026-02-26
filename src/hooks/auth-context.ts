@@ -77,8 +77,12 @@ export interface AuthContextType {
   acceptEmployeeInvitation: (input: AcceptEmployeeInvitationInput) => Promise<{ error: string | null }>;
   acceptClientInvitation: (input: AcceptClientInvitationInput) => Promise<{ error: string | null }>;
 
-  inviteEmployee: (input: InviteEmployeeInput) => Promise<{ error: string | null; invitationUrl?: string }>;
-  inviteClient: (input: InviteClientInput) => Promise<{ error: string | null; invitationUrl?: string }>;
+  inviteEmployee: (
+    input: InviteEmployeeInput,
+  ) => Promise<{ error: string | null; invitationUrl?: string; emailError?: string | null }>;
+  inviteClient: (
+    input: InviteClientInput,
+  ) => Promise<{ error: string | null; invitationUrl?: string; emailError?: string | null }>;
 
   approveClientMembership: (membershipId: string) => Promise<{ error: string | null }>;
   rejectClientMembership: (membershipId: string) => Promise<{ error: string | null }>;

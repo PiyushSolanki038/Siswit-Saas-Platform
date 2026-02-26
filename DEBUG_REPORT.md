@@ -1,281 +1,208 @@
-# Multi-Tenant SaaS Platform Debug Report
+# Project Debug Report
 
 **Project:** SiriusInfra Unified Platform  
-**Modules:** CLM, CRM, CPQ, ERP, Documents (Auto Documentation)  
-**Generated:** 2026-02-22  
-**Mode:** Debug Analysis - Single to Multi-Tenant Conversion
+**Analysis Date:** 2026-02-26  
+**Analysis Mode:** Comprehensive Debug & Code Review
 
 ---
 
 ## Executive Summary
 
-This report identifies issues found during the analysis of the codebase as it transitions from a single-company implementation to a multi-tenant SaaS architecture. The project has a well-structured foundation with proper hooks, contexts, and routing, but there are several critical issues that need to be addressed for proper multi-tenant isolation.
+The project is a React + TypeScript + Vite application with Supabase backend integration. It includes multiple enterprise modules: CRM, CPQ, CLM, and ERP. The build succeeds, but there are several code quality issues, potential bugs, and security concerns that should be addressed.
 
 ---
 
-## Critical Issues (Priority 1)
+## 1. Critical Issues
 
-### 1.1 Hardcoded Default Tenant ID in Signup
-**Location:** [`src/hooks/AuthProvider.tsx:287`](src/hooks/AuthProvider.tsx:287)
+### 1.1 Binary/Auto-generated Types File Breaking Lint
+**Location:** `src/integrations/supabase/types.ts`  
+**Issue:** The file appears to be binary or auto-generated content that's causing ESLint to fail with parsing error.  
+**Impact:** Linting cannot run on the entire project.  
+**Recommendation:** Either exclude this file from ESLint or regenerate it properly as a TypeScript file.
 
-```typescript
-const defaultTenantId = "a1b2c3d4-e5f6-7890-abcd-ef1234567890";
+```javascript
+// eslint.config.js should exclude this file:
+"ignorePatterns": ["src/integrations/supabase/types.ts"]
 ```
 
-**Issue:** The signup flow hardcodes a single tenant ID. When new customers sign up, they are automatically assigned to this single tenant instead of creating their own tenant organization.
+### 1.2 Supabase Keys Exposed in .env
+**Location:** `.env`  
+**Issue:** The Supabase publishable key is exposed in the environment file. While this key is meant to be public (client-side), it's still a security concern if committed to version control.
 
-**Impact:** New customers cannot create independent tenant organizations. All signup flows result in users being added to the same organization.
-
-**Recommendation:** Implement tenant creation flow during signup, or allow customers to specify/create their tenant during registration.
-
----
-
-### 1.2 Missing Tenant Scope in Dashboard Queries
-**Location:** [`src/pages/Dashboard.tsx:147-178`](src/pages/Dashboard.tsx:147-178)
-
-```typescript
-supabase.from("quotes").select("id", { count: "exact" })
-supabase.from("contracts").select("id", { count: "exact" })
-supabase.from("auto_documents").select("id", { count: "exact" })
-supabase.from("activities").select("subject, created_at, is_completed")
+```
+VITE_SUPABASE_PROJECT_ID="swzepbbpbeoqbiavidfh"
+VITE_SUPABASE_PUBLISHABLE_KEY="sb_publishable_V9p_-fjCAZtwQ-XwAmkp-w_ABD_2gHd"
+VITE_SUPABASE_URL="https://swzepbbpbeoqbiavidfh.supabase.co"
 ```
 
-**Issue:** Dashboard queries do NOT include tenant_id filters. This means:
-- Users can see data from ALL tenants
-- Dashboard statistics aggregate across tenant boundaries
-- No multi-tenant data isolation at the dashboard level
-
-**Impact:** Critical data privacy breach - users can potentially access other tenants' data.
-
-**Recommendation:** Wrap all dashboard queries with `applyModuleReadScope()` similar to how it's done in hooks.
+**Recommendation:** Ensure `.env` is properly gitignored (which it is based on the file list).
 
 ---
 
-### 1.3 Missing Tenant Context in Signup Forms
-**Location:** [`src/components/auth/CustomerSignupForm.tsx`](src/components/auth/CustomerSignupForm.tsx), [`src/components/auth/EmployeeSignupForm.tsx`](src/components/auth/EmployeeSignupForm.tsx)
+## 2. Code Quality Issues
 
-**Issue:** Both signup forms call `signUp()` but there's no mechanism for:
-- Creating a new tenant during customer signup
-- Selecting an existing tenant to join (for employees)
-- Tenant invitation acceptance flow
+### 2.1 Excessive Use of Type Casting (`as unknown as any`)
+**Count:** 34 instances across the codebase
 
-**Impact:** Users cannot self-provision new tenant organizations. The multi-tenant capability is non-functional for new user onboarding.
+This is a significant code quality issue that bypasses TypeScript's type safety. While sometimes necessary for Supabase integrations, excessive use indicates potential type definition problems.
 
----
+**Affected Files:**
+- `src/hooks/AuthProvider.tsx` (line 162)
+- `src/hooks/OrganizationProvider.tsx` (line 74)
+- `src/hooks/TenantProvider.tsx` (lines 18, 23, 86)
+- `src/hooks/useCRM.ts` (6 instances)
+- `src/hooks/useERP.ts` (5 instances)
+- `src/hooks/useOrganizationOwnerData.ts` (line 84)
+- `src/lib/soft-delete.ts` (lines 21, 42)
+- `src/lib/jobs.ts` (line 31)
+- `src/lib/audit.ts` (line 23)
+- `src/app/providers/ImpersonationProvider.tsx` (lines 25, 85, 115)
+- Multiple page components
 
-## High Priority Issues (Priority 2)
+**Recommendation:** Create proper TypeScript types/interfaces for Supabase responses instead of casting to `any`.
 
-### 2.1 Role Normalization Inconsistency
-**Location:** [`src/hooks/AuthProvider.tsx:22-45`](src/hooks/AuthProvider.tsx:22-45)
-
-**Issue:** The `normalizeTenantRole` function handles role mapping but has redundant mappings:
-- "admin" → "admin" 
-- "tenant_admin" → "admin"
-- "legacy_admin" → "admin"
-- "employee" → "user"
-- "tenant_user" → "user"
-
-While this provides backward compatibility, the inconsistency between "employee" (maps to "user") and the signup logic using `signupType === "employee"` creates confusion.
-
-**Recommendation:** Document the role mapping clearly and ensure all flows use the normalized roles consistently.
-
----
-
-### 2.2 Module Scope Not Applied to All Tables
-**Location:** Various hooks in [`src/hooks/useCRM.ts`](src/hooks/useCRM.ts), [`src/hooks/useCPQ.ts`](src/hooks/useCPQ.ts), [`src/hooks/useCLM.ts`](src/hooks/useCLM.ts), [`src/hooks/useERP.ts`](src/hooks/useERP.ts)
-
-**Issue:** While most CRUD operations use `applyModuleReadScope` and `applyModuleMutationScope`, there are potential gaps:
-
-1. **Account-Contact relationship queries** - Not scoped by tenant in some JOIN operations
-2. **Opportunity-Lead conversion** - When converting a lead to opportunity/account, tenant_id handling needs verification
-3. **Quote-to-Contract flow** - The CLM hooks create contracts from quotes but need full tenant verification
-
-**Impact:** Potential data leakage between tenants in edge cases.
-
-**Recommendation:** Audit all cross-table queries to ensure tenant_id is propagated correctly.
-
----
-
-### 2.3 Impersonation State Not Persisted
-**Location:** [`src/hooks/useImpersonation.ts`](src/hooks/useImpersonation.ts)
-
-**Issue:** The impersonation state (for platform admins viewing tenant data) appears to be client-side only. If the user refreshes the page, the impersonation context may be lost.
-
-**Impact:** Platform admins may lose their "preview as tenant" context on page refresh.
-
-**Recommendation:** Consider storing impersonation state in sessionStorage or URL parameters.
-
----
-
-### 2.4 Tenant Slug Guard Race Condition
-**Location:** [`src/components/auth/TenantSlugGuard.tsx:25-76`](src/components/auth/TenantSlugGuard.tsx:25-76)
-
-**Issue:** The `useEffect` in TenantSlugGuard has multiple async operations that could race:
-1. Check membership
-2. Switch tenant by slug
-3. Start impersonation
-
-The dependency array is complex and could lead to race conditions when rapidly navigating between tenants.
-
-**Recommendation:** Add a mounting guard and consider using a mutex/lock pattern for tenant switching.
-
----
-
-### 2.5 Missing Subscription Validation
-**Location:** [`src/hooks/TenantProvider.tsx:174-186`](src/hooks/TenantProvider.tsx:174-186)
+### 2.2 Missing Error Handling in Soft Delete
+**Location:** `src/lib/soft-delete.ts`  
+**Issue:** The `softDeleteRecord` function returns `boolean` but doesn't properly handle or log errors. The error object structure is assumed rather than properly typed.
 
 ```typescript
-const enabledModules: ModuleType[] = useMemo(() => {
-  if (!subscription) {
-    return ["crm", "clm", "cpq", "erp", "documents"]; // FALLBACK - ALL MODULES!
-  }
-  // ... module filtering
-}, [subscription]);
+// Current implementation
+return !error; // This is misleading - any error (including null) returns true
 ```
 
-**Issue:** When no subscription exists, ALL modules are enabled by default. This is dangerous for a multi-tenant system where billing/modules should be controlled per-tenant.
-
-**Impact:** Users without a subscription could potentially access all paid features.
-
-**Recommendation:** Default to NO modules enabled or redirect to billing/subscription setup.
+**Recommendation:** Properly type the Supabase client and return more meaningful results.
 
 ---
 
-## Medium Priority Issues (Priority 3)
+## 3. Potential Bugs & Issues
 
-### 3.1 Inconsistent Error Handling
-**Location:** Throughout hooks
+### 3.1 Role Priority Sorting Issue
+**Location:** `src/hooks/AuthProvider.tsx` (lines 143-158)
 
-**Issue:** Different hooks handle errors differently:
-- Some throw errors
-- Some return error objects
-- Some use toast notifications inconsistently
+The `membershipPriority` function returns numeric priorities, but the sorting in `pickMembership` may not handle all edge cases properly. If `created_at` is null on both records, the sort may be unstable.
 
-**Impact:** Poor user experience and difficult debugging.
+### 3.2 Missing null check in useAuth hook
+**Location:** `src/hooks/useAuth.ts` (line 6)
 
----
+The hook throws an error if used outside AuthProvider, which is correct behavior, but there's no way for components to gracefully handle this case.
 
-### 3.2 Missing Loading States in Some Components
-**Location:** Various page components
+### 3.3 Potential Race Condition in Tenant/Organization Loading
+**Location:** `src/hooks/TenantProvider.tsx`, `src/hooks/OrganizationProvider.tsx`
 
-**Issue:** Some components don't show proper loading states while tenant context is loading, leading to "flickering" or brief unauthorized access flashes.
+The providers use `useEffect` to fetch data when `authLoading` becomes false. If the auth state changes rapidly, there could be race conditions. Consider using `useRef` to track pending requests or adding request cancellation.
 
----
+### 3.4 Missing Authorization Checks in Some Mutations
+**Location:** Multiple hooks in `src/hooks/useCRM.ts`, `src/hooks/useCPQ.ts`, `src/hooks/useCLM.ts`, `src/hooks/useERP.ts`
 
-### 3.3 No Tenant Invitation System
-**Issue:** There's no UI for:
-- Inviting users to a tenant
-- Accepting tenant invitations
-- Managing pending invitations
-
-**Impact:** Employee onboarding requires manual database entries.
+While there are module scope checks, some mutations may not properly verify ownership before performing updates/deletes. The soft delete pattern is used but the error handling could be improved.
 
 ---
 
-### 3.4 Missing Tenant Branding/Theming
-**Location:** [`src/types/tenant.ts:60-62`](src/types/tenant.ts:60-62)
+## 4. Security Concerns
 
-**Issue:** Tenant type defines `logo_url` and `primary_color` but these are not applied in the UI layouts.
+### 4.1 Client-Side Role Caching
+**Location:** `src/hooks/AuthProvider.tsx` (lines 170-181)
 
-**Impact:** Multi-tenant white-labeling is not functional.
+Roles are cached in localStorage (`ROLE_CACHE_KEY_PREFIX`). While this improves performance, cached roles could become stale if:
+- User permissions are changed by an admin
+- User is removed from organization
+- User's role is downgraded
 
----
+**Recommendation:** Implement a role refresh mechanism or add TTL to the cached roles.
 
-### 3.5 Product/Inventory Sharing Across Tenants
-**Location:** [`src/hooks/useCPQ.ts`](src/hooks/useCPQ.ts), [`src/hooks/useERP.ts`](src/hooks/useERP.ts)
+### 4.2 Invitation Token Security
+**Location:** `src/hooks/AuthProvider.tsx` (lines 476-504)
 
-**Issue:** Products and Inventory items should be tenant-specific but the hooks don't consistently enforce tenant isolation in all scenarios, especially in JOIN queries.
+Invitation tokens are hashed using SHA-256 before storage, which is good. However:
+- No rate limiting on invitation acceptance
+- No maximum attempt tracking
+- Tokens don't have rotation mechanism
 
----
+### 4.3 Impersonation Feature
+**Location:** `src/app/providers/ImpersonationProvider.tsx`
 
-### 3.6 Audit Log Tenant Association
-**Location:** [`src/lib/audit.ts`](src/lib/audit.ts)
-
-**Issue:** Audit logs have `tenantId` field but need verification that all audit entries correctly capture the tenant context, especially for platform admin actions.
-
----
-
-## Low Priority Issues (Priority 4)
-
-### 4.1 Route Protection Gaps
-**Location:** [`src/App.tsx`](src/App.tsx)
-
-**Issue:** Some legacy routes might not have proper guards. The redirect layer exists but edge cases may exist.
+Platform admins can impersonate tenant users. While there are audit considerations, ensure:
+- All impersonation actions are logged
+- Impersonation sessions have timeouts
+- Users are notified when being impersoned (currently there's a banner but verify it's clear)
 
 ---
 
-### 4.2 Missing TypeScript Strict Mode Compatibility
-**Location:** Various files
+## 5. Performance Issues
 
-**Issue:** Some files use `as` type assertions extensively, which bypasses TypeScript safety checks.
+### 5.1 Large Bundle Size Warning
+**Build Output:**
+```
+dist/assets/index-BIxAZbtX.js  600.47 kB │ gzip: 179.51 kB
+dist/assets/PieChart-DbedcVxX.js  384.64 kB │ gzip: 105.59 kB
+dist/assets/BarChart-DuPE50Vl.js   24.65 kB │ gzip:   6.37 kB
+dist/assets/QuoteDetailPage-BaMeB54W.js   24.52 kB │ gzip:   7.25 kB
+```
 
----
+**Recommendation:** 
+- Implement code splitting for large components
+- Use dynamic imports for chart libraries
+- Consider lazy loading the QuoteDetailPage
 
-### 4.3 No Tenant Usage/Billing Tracking
-**Issue:** No implementation for:
-- Tracking user count per tenant
-- Storage usage tracking
-- API call limits
+### 5.2 Multiple Concurrent Database Queries
+**Location:** `src/hooks/useCRM.ts` (line 1576)
 
----
+```typescript
+const [{ count: leadsCount, error: leadsError }, ...] = await Promise.all([...]);
+```
 
-### 4.4 Missing Platform Admin Dashboard for Tenant Management
-**Location:** [`src/pages/admin/panels/TenantsPanel.tsx`](src/pages/admin/panels/TenantsPanel.tsx)
-
-**Issue:** While the panel exists, full tenant lifecycle management (create, suspend, cancel, upgrade) may be incomplete.
-
----
-
-## Architectural Strengths (Positive Findings)
-
-1. **Well-structured hooks pattern** - Each module (CRM, CPQ, CLM, ERP) has dedicated hooks with proper tenant scoping
-2. **Module scope utilities** - `applyModuleReadScope`, `applyModuleMutationScope` provide centralized tenant isolation
-3. **Authentication flow** - Proper separation between platform admin and tenant user roles
-4. **Impersonation feature** - Platform admins can preview tenant views
-5. **Database migrations** - Soft delete and audit logging infrastructure in place
-6. **Route structure** - Clean `/tenantSlug/app/module` pattern for tenant isolation
+While using `Promise.all` is good, some queries might benefit from pagination or virtualization.
 
 ---
 
-## Recommended Action Items
+## 6. Architecture Observations
 
-### Immediate (Week 1)
-1. Fix hardcoded `defaultTenantId` - implement dynamic tenant creation
-2. Add tenant_id filters to Dashboard queries
-3. Fix module fallback to disable all modules by default
+### 6.1 Dual Tenant/Organization System
+The codebase shows a migration from "tenant" to "organization" terminology. There are compatibility layers in place (`tenantId`/`organizationId`, etc.), but this adds complexity.
 
-### Short-term (Week 2-3)
-1. Implement tenant invitation system
-2. Add tenant scoping to all cross-table queries
-3. Fix TenantSlugGuard race conditions
+### 6.2 Module Scope Pattern
+The `module-scope.ts` implementation is well-designed with:
+- Read scope application
+- Mutation scope application  
+- Payload building helpers
 
-### Medium-term (Month 1)
-1. Complete tenant white-labeling (branding)
-2. Implement subscription-based module access
-3. Add tenant usage tracking/billing hooks
-4. Build platform admin tenant management UI
+However, the repeated pattern in each hook could benefit from a more centralized approach.
 
 ---
 
-## Testing Recommendations
+## 7. Testing Recommendations
 
-1. **Multi-tenant isolation testing** - Create test users in different tenants and verify they cannot see each other's data
-2. **Signup flow testing** - Test customer and employee signup flows
-3. **Impersonation testing** - Verify platform admin can view each tenant correctly
-4. **Module access testing** - Verify disabled modules are hidden
-5. **Role-based access testing** - Test all role types have correct permissions
+### 7.1 Missing Test Files
+No test files were found in the project. Recommended tests:
+- Unit tests for role-based access control
+- Integration tests for auth flows
+- E2E tests for critical user journeys
 
----
-
-## Files Requiring Changes
-
-| Priority | Files |
-|----------|-------|
-| Critical | `src/hooks/AuthProvider.tsx`, `src/pages/Dashboard.tsx`, `src/hooks/TenantProvider.tsx` |
-| High | `src/hooks/useCRM.ts`, `src/hooks/useCPQ.ts`, `src/hooks/useCLM.ts`, `src/hooks/useERP.ts`, `src/components/auth/TenantSlugGuard.tsx` |
-| Medium | `src/components/auth/CustomerSignupForm.tsx`, `src/components/auth/EmployeeSignupForm.tsx`, `src/components/tenant/TenantAdminLayout.tsx` |
-| Low | `src/lib/audit.ts`, `src/pages/admin/panels/TenantsPanel.tsx` |
+### 7.2 Error Boundary Missing
+No React error boundaries found. Consider adding error boundaries around major layouts to gracefully handle runtime errors.
 
 ---
 
-*End of Debug Report*
+## 8. Recommendations Summary
+
+| Priority | Issue | Effort |
+|----------|-------|--------|
+| High | Fix ESLint by excluding binary types file | Low |
+| High | Review and reduce `as unknown as any` usage | Medium |
+| Medium | Add role caching with TTL | Low |
+| Medium | Implement proper error handling in soft-delete | Low |
+| Medium | Add unit tests | High |
+| Low | Optimize bundle size | Medium |
+| Low | Add error boundaries | Low |
+
+---
+
+## Build Status
+
+- **Build:** ✅ SUCCESS
+- **Lint:** ❌ FAILED (due to binary types file)
+- **Runtime:** Not tested (requires Supabase backend)
+
+---
+
+*Report generated by automated code analysis. Some issues may be intentional design decisions.*

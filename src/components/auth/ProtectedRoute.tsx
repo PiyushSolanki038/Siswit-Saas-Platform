@@ -149,7 +149,11 @@ export function OrganizationOwnerRoute({ children }: { children: React.ReactNode
     return <Navigate to="/auth/sign-in" replace />;
   }
 
-  if (isPlatformRole(role ?? null) || role === "owner" || role === "admin") {
+  if (isPlatformRole(role ?? null)) {
+    return <Navigate to={platformPath()} replace />;
+  }
+
+  if (role === "owner" || role === "admin") {
     return <>{children}</>;
   }
 

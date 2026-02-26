@@ -48,7 +48,14 @@ const ResetPassword = lazy(() => import("./pages/ResetPassword"));
 const Unauthorized = lazy(() => import("./pages/Unauthorized"));
 const NotFound = lazy(() => import("./pages/NotFound"));
 const PendingApproval = lazy(() => import("./pages/PendingApproval"));
-const OrganizationOwnerDashboard = lazy(() => import("./pages/OrganizationOwnerDashboard"));
+const OrganizationOwnerLayout = lazy(() => import("./components/organization/OrganizationOwnerLayout"));
+const OrganizationOverviewPage = lazy(() => import("./pages/organization/OrganizationOverviewPage"));
+const OrganizationUsersPage = lazy(() => import("./pages/organization/OrganizationUsersPage"));
+const OrganizationInvitationsPage = lazy(() => import("./pages/organization/OrganizationInvitationsPage"));
+const OrganizationApprovalsPage = lazy(() => import("./pages/organization/OrganizationApprovalsPage"));
+const OrganizationPlansPage = lazy(() => import("./pages/organization/OrganizationPlansPage"));
+const OrganizationAlertsPage = lazy(() => import("./pages/organization/OrganizationAlertsPage"));
+const OrganizationSettingsPage = lazy(() => import("./pages/organization/OrganizationSettingsPage"));
 
 const Dashboard = lazy(() => import("./pages/Dashboard"));
 const PlatformAdminDashboard = lazy(() => import("./pages/admin/PlatformAdminDashboard"));
@@ -180,13 +187,22 @@ function AppRoutes() {
           }
         />
         <Route
-          path="/organization/*"
+          path="/organization"
           element={
             <OrganizationOwnerRoute>
-              <OrganizationOwnerDashboard />
+              <OrganizationOwnerLayout />
             </OrganizationOwnerRoute>
           }
-        />
+        >
+          <Route index element={<Navigate to="/organization/overview" replace />} />
+          <Route path="overview" element={<OrganizationOverviewPage />} />
+          <Route path="users" element={<OrganizationUsersPage />} />
+          <Route path="invitations" element={<OrganizationInvitationsPage />} />
+          <Route path="approvals" element={<OrganizationApprovalsPage />} />
+          <Route path="plans" element={<OrganizationPlansPage />} />
+          <Route path="alerts" element={<OrganizationAlertsPage />} />
+          <Route path="settings" element={<OrganizationSettingsPage />} />
+        </Route>
 
         {/* Platform */}
         <Route
