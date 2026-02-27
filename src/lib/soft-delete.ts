@@ -18,16 +18,9 @@ interface RestoreInput {
  * - keep record for audit and recovery
  */
 export async function softDeleteRecord(input: SoftDeleteInput): Promise<boolean> {
-  const unsafeSupabase = supabase as unknown as {
-    from: (table: string) => {
-      update: (payload: unknown) => {
-        eq: (column: string, value: string) => Promise<{ error: { message?: string } | null }>;
-      };
-    };
-  };
-
-  const { error } = await unsafeSupabase
-    .from(input.table)
+  const { error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .from(input.table as any)
     .update({
       deleted_at: new Date().toISOString(),
       deleted_by: input.userId ?? null,
@@ -35,20 +28,18 @@ export async function softDeleteRecord(input: SoftDeleteInput): Promise<boolean>
     })
     .eq("id", input.id);
 
-  return !error;
+  if (error) {
+    console.error(`Soft delete error on table ${input.table} (ID: ${input.id}):`, error);
+    throw new Error(error.message || `Failed to soft delete record in ${input.table}`);
+  }
+
+  return true;
 }
 
 export async function restoreSoftDeletedRecord(input: RestoreInput): Promise<boolean> {
-  const unsafeSupabase = supabase as unknown as {
-    from: (table: string) => {
-      update: (payload: unknown) => {
-        eq: (column: string, value: string) => Promise<{ error: { message?: string } | null }>;
-      };
-    };
-  };
-
-  const { error } = await unsafeSupabase
-    .from(input.table)
+  const { error } = await supabase
+    // eslint-disable-next-line @typescript-eslint/no-explicit-any
+    .from(input.table as any)
     .update({
       deleted_at: null,
       deleted_by: null,
@@ -56,5 +47,10 @@ export async function restoreSoftDeletedRecord(input: RestoreInput): Promise<boo
     })
     .eq("id", input.id);
 
-  return !error;
+  if (error) {
+    console.error(`Restore soft delete error on table ${input.table} (ID: ${input.id}):`, error);
+    throw new Error(error.message || `Failed to restore record in ${input.table}`);
+  }
+
+  return true;
 }

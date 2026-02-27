@@ -14,7 +14,7 @@ export enum OrganizationRole {
   CLIENT = "client",
 }
 
-export type LegacyRole = "platform_admin" | "user" | "pending_approval" | "rejected";
+export type LegacyRole = "platform_admin" | "user" | "pending_approval" | "rejected" | "platform_super_admin";
 export type CanonicalRole = PlatformRole | OrganizationRole;
 export type AppRole = CanonicalRole | LegacyRole;
 export type WorkspaceRole =

@@ -1,7 +1,7 @@
 "use client";
 
-import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
-import type { Session, User } from "@supabase/supabase-js";
+import { ReactNode, useCallback, useEffect, useState } from "react";
+import type { Session, User, SupabaseClient } from "@supabase/supabase-js";
 import { supabase } from "@/integrations/supabase/client";
 import {
   type AcceptClientInvitationInput,
@@ -13,7 +13,7 @@ import {
   type InviteEmployeeInput,
   type OrganizationSignUpInput,
 } from "@/hooks/auth-context";
-import { normalizeRole } from "@/types/roles";
+import { normalizeRole, PlatformRole } from "@/types/roles";
 
 const ROLE_CACHE_KEY_PREFIX = "org_role_";
 const AUTH_ROLE_LOOKUP_TIMEOUT_MS = Number(import.meta.env.VITE_AUTH_ROLE_LOOKUP_TIMEOUT_MS ?? "5000");
@@ -107,7 +107,7 @@ function generateOrgCode(name: string): string {
   return `${prefix}${suffix}`;
 }
 
-async function withTimeout<T>(promise: Promise<T>, timeoutMs: number): Promise<T> {
+async function withTimeout<T>(promise: Promise<T> | PromiseLike<T>, timeoutMs: number): Promise<T> {
   const timeout = Number.isFinite(timeoutMs) && timeoutMs > 0 ? timeoutMs : 5000;
   return Promise.race<T>([
     promise,
@@ -158,8 +158,7 @@ function membershipPriority(role: string): number {
 }
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const unsafeSupabase = useMemo(() => supabase as unknown as any, []);
+  const unsafeSupabase = supabase as unknown as SupabaseClient;
 
   const [user, setUser] = useState<User | null>(null);
   const [session, setSession] = useState<Session | null>(null);
@@ -169,15 +168,32 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const cacheRole = useCallback((userId: string, userRole: AuthRole) => {
     if (userRole) {
-      localStorage.setItem(`${ROLE_CACHE_KEY_PREFIX}${userId}`, userRole);
+      const payload = { role: userRole, timestamp: Date.now() };
+      localStorage.setItem(`${ROLE_CACHE_KEY_PREFIX}${userId}`, JSON.stringify(payload));
       return;
     }
     localStorage.removeItem(`${ROLE_CACHE_KEY_PREFIX}${userId}`);
   }, []);
 
   const getCachedRole = useCallback((userId: string): AuthRole => {
-    const cached = localStorage.getItem(`${ROLE_CACHE_KEY_PREFIX}${userId}`);
-    return normalizeRole(cached);
+    try {
+      const cached = localStorage.getItem(`${ROLE_CACHE_KEY_PREFIX}${userId}`);
+      if (!cached) return null;
+
+      let parsedRole = cached;
+      if (cached.startsWith("{")) {
+        const payload = JSON.parse(cached);
+        const age = Date.now() - (payload.timestamp || 0);
+        if (age > 60 * 60 * 1000) {
+          localStorage.removeItem(`${ROLE_CACHE_KEY_PREFIX}${userId}`);
+          return null;
+        }
+        parsedRole = payload.role;
+      }
+      return normalizeRole(parsedRole);
+    } catch {
+      return null;
+    }
   }, []);
 
   const pickMembership = useCallback((rows: MembershipLookupRow[]): MembershipLookupRow | null => {
@@ -188,7 +204,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       if (roleOrder !== 0) return roleOrder;
       const aCreated = new Date(a.created_at ?? 0).getTime();
       const bCreated = new Date(b.created_at ?? 0).getTime();
-      return aCreated - bCreated;
+      if (aCreated !== bCreated) return aCreated - bCreated;
+      return a.id.localeCompare(b.id);
     });
 
     return sorted[0] ?? null;
@@ -220,7 +237,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const superAdminResult = await withTimeout(superAdminPromise, AUTH_ROLE_LOOKUP_TIMEOUT_MS);
 
         if (superAdminResult?.data && superAdminResult.data.is_active !== false) {
-          return "platform_super_admin";
+          return PlatformRole.PLATFORM_SUPER_ADMIN;
         }
 
         const membershipPromise = unsafeSupabase

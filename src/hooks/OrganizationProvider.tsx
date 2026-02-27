@@ -1,7 +1,8 @@
 "use client";
 
-import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
+import type { SupabaseClient } from "@supabase/supabase-js";
 import { useAuth } from "@/hooks/useAuth";
 import { useImpersonation } from "@/hooks/useImpersonation";
 import { OrganizationContext, type OrganizationContextType } from "@/hooks/organization-context";
@@ -70,8 +71,7 @@ function mapMembership(row: Record<string, unknown>): OrganizationMembership {
 }
 
 export function OrganizationProvider({ children }: { children: ReactNode }) {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const unsafeSupabase = useMemo(() => supabase as unknown as any, []);
+  const unsafeSupabase = supabase as unknown as SupabaseClient;
   const { user, role, loading: authLoading } = useAuth();
   const { state: impersonation } = useImpersonation();
 
@@ -79,6 +79,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
   const [subscription, setSubscription] = useState<OrganizationSubscription | null>(null);
   const [memberships, setMemberships] = useState<OrganizationMembership[]>([]);
   const [organizationLoading, setOrganizationLoading] = useState(true);
+  const fetchCount = useRef(0);
 
   const fetchSubscriptionByOrganization = useCallback(
     async (organizationId: string) => {
@@ -96,6 +97,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
 
   const fetchOrganizationData = useCallback(
     async (userId: string) => {
+      const currentFetch = ++fetchCount.current;
       try {
         if (role === "platform_super_admin" && impersonation.active && impersonation.tenantSlug) {
           const orgResult = await unsafeSupabase
@@ -103,6 +105,8 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
             .select("*")
             .eq("slug", impersonation.tenantSlug)
             .maybeSingle();
+
+          if (currentFetch !== fetchCount.current) return;
 
           if (orgResult.data) {
             const nextOrg = mapOrganization(orgResult.data as Record<string, unknown>);
@@ -113,11 +117,15 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
           }
         }
 
+        if (currentFetch !== fetchCount.current) return;
+
         const membershipsResult = await unsafeSupabase
           .from("organization_memberships")
           .select("id, organization_id, user_id, role, department, account_state, is_active, organization:organizations(*)")
           .eq("user_id", userId)
           .eq("is_active", true);
+
+        if (currentFetch !== fetchCount.current) return;
 
         if (membershipsResult.error) {
           setMemberships([]);
@@ -145,11 +153,14 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
         setOrganization(primary);
         setSubscription(await fetchSubscriptionByOrganization(primary.id));
       } catch {
+        if (currentFetch !== fetchCount.current) return;
         setMemberships([]);
         setOrganization(null);
         setSubscription(null);
       } finally {
-        setOrganizationLoading(false);
+        if (currentFetch === fetchCount.current) {
+          setOrganizationLoading(false);
+        }
       }
     },
     [fetchSubscriptionByOrganization, impersonation.active, impersonation.tenantSlug, role, unsafeSupabase],

@@ -6,6 +6,7 @@ import { TooltipProvider } from "@/components/ui/tooltip";
 import { Toaster } from "@/components/ui/toaster";
 import { Toaster as Sonner } from "@/components/ui/sonner";
 import { ScrollToTop } from "@/components/ScrollToTop";
+import { ErrorBoundary } from "@/components/ErrorBoundary";
 import { useAuth } from "@/hooks/useAuth";
 import { AuthProvider } from "@/hooks/AuthProvider";
 import { useTenant } from "@/hooks/useTenant";
@@ -314,18 +315,20 @@ const App = () => (
       <TooltipProvider>
         <Toaster />
         <Sonner />
-        <BrowserRouter>
-          <ScrollToTop />
-          <AuthProvider>
-            <ImpersonationProvider>
-              <OrganizationProvider>
-                <TenantProvider>
-                  <AppRoutes />
-                </TenantProvider>
-              </OrganizationProvider>
-            </ImpersonationProvider>
-          </AuthProvider>
-        </BrowserRouter>
+        <ErrorBoundary>
+          <BrowserRouter>
+            <ScrollToTop />
+            <AuthProvider>
+              <ImpersonationProvider>
+                <OrganizationProvider>
+                  <TenantProvider>
+                    <AppRoutes />
+                  </TenantProvider>
+                </OrganizationProvider>
+              </ImpersonationProvider>
+            </AuthProvider>
+          </BrowserRouter>
+        </ErrorBoundary>
       </TooltipProvider>
     </QueryClientProvider>
   </ThemeProvider>

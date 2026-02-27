@@ -1,6 +1,6 @@
 "use client";
 
-import { ReactNode, useCallback, useEffect, useMemo, useState } from "react";
+import { ReactNode, useCallback, useEffect, useMemo, useRef, useState } from "react";
 import { supabase } from "@/integrations/supabase/client";
 import type { Database } from "@/integrations/supabase/types";
 import { useAuth } from "@/hooks/useAuth";
@@ -44,6 +44,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   const [subscription, setSubscription] = useState<TenantSubscription | null>(null);
   const [memberships, setMemberships] = useState<TenantMembership[]>([]);
   const [tenantLoading, setTenantLoading] = useState(true);
+  const fetchCount = useRef(0);
 
   const fetchSubscriptionByTenant = useCallback(async (tenantId: string) => {
     const result = await supabase.from("tenant_subscriptions").select("*").eq("tenant_id", tenantId).maybeSingle();
@@ -53,6 +54,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   const fetchTenantData = useCallback(
     async (userId: string) => {
+      const currentFetch = ++fetchCount.current;
       try {
         if (isPlatformRole(role) && impersonation.active && impersonation.tenantSlug) {
           const tenantResult = await supabase
@@ -60,6 +62,8 @@ export function TenantProvider({ children }: { children: ReactNode }) {
             .select("*")
             .eq("slug", impersonation.tenantSlug)
             .maybeSingle();
+
+          if (currentFetch !== fetchCount.current) return;
 
           if (tenantResult.data) {
             const nextTenant = mapTenant(tenantResult.data as TenantRow);
@@ -70,11 +74,15 @@ export function TenantProvider({ children }: { children: ReactNode }) {
           }
         }
 
+        if (currentFetch !== fetchCount.current) return;
+
         const membershipsResult = await supabase
           .from("tenant_users")
           .select("id, tenant_id, user_id, role, department, is_active, is_approved, tenant:tenants(*)")
           .eq("user_id", userId)
           .eq("is_active", true);
+
+        if (currentFetch !== fetchCount.current) return;
 
         if (membershipsResult.error) {
           setMemberships([]);
@@ -103,11 +111,14 @@ export function TenantProvider({ children }: { children: ReactNode }) {
         setTenant(firstTenant);
         setSubscription(await fetchSubscriptionByTenant(firstTenant.id));
       } catch {
+        if (currentFetch !== fetchCount.current) return;
         setMemberships([]);
         setTenant(null);
         setSubscription(null);
       } finally {
-        setTenantLoading(false);
+        if (currentFetch === fetchCount.current) {
+          setTenantLoading(false);
+        }
       }
     },
     [fetchSubscriptionByTenant, impersonation.active, impersonation.tenantSlug, role],
