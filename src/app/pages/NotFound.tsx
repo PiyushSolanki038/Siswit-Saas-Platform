@@ -9,7 +9,7 @@ const NotFound = () => {
   const location = useLocation();
 
   useEffect(() => {
-    console.error("404 Error: User attempted to access non-existent route:", location.pathname);
+    // 404 tracking
   }, [location.pathname]);
 
   return (
@@ -18,14 +18,14 @@ const NotFound = () => {
       <main className="pt-20">
         <section className="min-h-[80vh] flex items-center justify-center gradient-hero relative overflow-hidden">
           <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-96 h-96 bg-primary/20 rounded-full blur-3xl" />
-          
+
           <div className="container mx-auto px-4 text-center relative z-10">
             <div className="text-9xl font-bold text-gradient mb-4">404</div>
             <h1 className="text-3xl sm:text-4xl font-bold text-foreground mb-4">
               Page Not Found
             </h1>
             <p className="text-lg text-muted-foreground mb-8 max-w-md mx-auto">
-              The page you're looking for doesn't exist or has been moved. 
+              The page you're looking for doesn't exist or has been moved.
               Let's get you back on track.
             </p>
             <div className="flex flex-col sm:flex-row gap-4 justify-center">

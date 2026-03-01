@@ -169,15 +169,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const cacheRole = useCallback((userId: string, userRole: AuthRole) => {
     if (userRole) {
       const payload = { role: userRole, timestamp: Date.now() };
-      localStorage.setItem(`${ROLE_CACHE_KEY_PREFIX}${userId}`, JSON.stringify(payload));
+      sessionStorage.setItem(`${ROLE_CACHE_KEY_PREFIX}${userId}`, JSON.stringify(payload));
       return;
     }
-    localStorage.removeItem(`${ROLE_CACHE_KEY_PREFIX}${userId}`);
+    sessionStorage.removeItem(`${ROLE_CACHE_KEY_PREFIX}${userId}`);
   }, []);
 
   const getCachedRole = useCallback((userId: string): AuthRole => {
     try {
-      const cached = localStorage.getItem(`${ROLE_CACHE_KEY_PREFIX}${userId}`);
+      const cached = sessionStorage.getItem(`${ROLE_CACHE_KEY_PREFIX}${userId}`);
       if (!cached) return null;
 
       let parsedRole = cached;
@@ -185,7 +185,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         const payload = JSON.parse(cached);
         const age = Date.now() - (payload.timestamp || 0);
         if (age > 60 * 60 * 1000) {
-          localStorage.removeItem(`${ROLE_CACHE_KEY_PREFIX}${userId}`);
+          sessionStorage.removeItem(`${ROLE_CACHE_KEY_PREFIX}${userId}`);
           return null;
         }
         parsedRole = payload.role;
@@ -268,8 +268,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       const nextRole = await getUserRole(user.id);
       setRole(nextRole);
       cacheRole(user.id, nextRole);
-    } catch {
-      // Non-blocking refresh
+    } catch (error) {
+      // Non-blocking refresh, add error to telemetry/logs if needed in future
     }
   }, [cacheRole, getUserRole, user?.id]);
 
@@ -301,39 +301,46 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       let nextSlug = baseSlug;
       let nextCode = baseCode;
 
-      for (let attempt = 0; attempt < 10; attempt += 1) {
-        const { data: existing } = await unsafeSupabase
-          .from("organizations")
-          .select("id")
-          .or(`slug.eq.${nextSlug},org_code.eq.${nextCode}`)
-          .limit(1);
+      let orgData: { id: string; slug: string } | null = null;
 
-        if (!existing || existing.length === 0) {
-          break;
+      for (let attempt = 0; attempt < 10; attempt += 1) {
+        const { data, error } = await unsafeSupabase
+          .from("organizations")
+          .insert({
+            name: input.organizationName,
+            slug: nextSlug,
+            org_code: nextCode,
+            owner_user_id: userId,
+            status: "trial",
+            plan_type: "starter",
+            created_at: new Date().toISOString(),
+            updated_at: new Date().toISOString(),
+          })
+          .select("id, slug")
+          .maybeSingle();
+
+        if (error) {
+          // 23505 is PostgreSQL's unique_violation error code
+          if (error.code === "23505") {
+            nextSlug = `${baseSlug}-${Math.floor(100 + Math.random() * 900)}`;
+            nextCode = `${baseCode.slice(0, 8)}${Math.floor(10 + Math.random() * 89)}`;
+            continue;
+          }
+          // Error creating organization
+          throw new Error(`Unable to create organization: ${error.message}`);
         }
 
-        nextSlug = `${baseSlug}-${Math.floor(100 + Math.random() * 900)}`;
-        nextCode = `${baseCode.slice(0, 8)}${Math.floor(10 + Math.random() * 89)}`;
+        if (data?.id) {
+          orgData = data;
+          break;
+        }
       }
 
-      const { data, error } = await unsafeSupabase
-        .from("organizations")
-        .insert({
-          name: input.organizationName,
-          slug: nextSlug,
-          org_code: nextCode,
-          owner_user_id: userId,
-          status: "trial",
-          plan_type: "starter",
-          created_at: new Date().toISOString(),
-          updated_at: new Date().toISOString(),
-        })
-        .select("id, slug")
-        .single();
-
-      if (error || !data?.id) {
+      if (!orgData?.id) {
         return null;
       }
+
+      const data = orgData;
 
       const { error: subscriptionError } = await unsafeSupabase.from("organization_subscriptions").insert({
         organization_id: data.id,
@@ -391,16 +398,27 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         });
 
         if (error) {
+          if (
+            error.message.toLowerCase().includes("already registered") ||
+            error.message.toLowerCase().includes("already exists")
+          ) {
+            return {
+              error:
+                "This email is already registered. Please sign in first, then create your organization from the dashboard.",
+            };
+          }
           return { error: error.message };
         }
 
-        if (!data.user?.id) {
+        const userId = data?.user?.id;
+
+        if (!userId) {
           return { error: "Unable to create user." };
         }
 
-        await upsertProfile(data.user.id, input.ownerFullName);
+        await upsertProfile(userId, input.ownerFullName);
 
-        const org = await createOrganization(input, data.user.id);
+        const org = await createOrganization(input, userId);
         if (!org) {
           return { error: "Unable to create organization." };
         }
@@ -412,7 +430,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     },
-    [createOrganization, upsertProfile],
+    [createOrganization, unsafeSupabase, upsertProfile],
   );
 
   const findOrganizationBySlugOrCode = useCallback(
@@ -469,7 +487,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           user_id: data.user.id,
           email: input.email,
           role: "client",
-          account_state: "pending_approval",
+          account_state: "pending_verification",
           is_email_verified: false,
           is_active: true,
           created_at: new Date().toISOString(),
@@ -949,15 +967,11 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [cacheRole, claimPendingInvitations, getUserRole],
   );
 
+  /** @deprecated Use signUpOrganization, signUpClientSelf, or invitation acceptance instead. */
   const signUp = useCallback(
-    async (_email: string, _password: string, _firstName: string, _lastName: string, _signupType: string) => {
-      return {
-        error: {
-          message:
-            "Legacy signup has been replaced. Use organization signup, client self-signup, or invitation acceptance.",
-        },
-      };
-    },
+    async (_email: string, _password: string, _firstName: string, _lastName: string, _signupType: string) => ({
+      error: { message: "Legacy signup is disabled. Use organization signup, client self-signup, or accept an invitation." },
+    }),
     [],
   );
 
@@ -966,7 +980,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setIsLoggingOut(true);
 
     if (userId) {
-      localStorage.removeItem(`${ROLE_CACHE_KEY_PREFIX}${userId}`);
+      sessionStorage.removeItem(`${ROLE_CACHE_KEY_PREFIX}${userId}`);
     }
 
     try {

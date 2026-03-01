@@ -63,7 +63,7 @@ export interface AuthContextType {
     rememberMe?: boolean,
   ) => Promise<{ error: string | null; role: AuthRole }>;
 
-  // Legacy compatibility
+  /** @deprecated Use signUpOrganization, signUpClientSelf, or invitation acceptance instead. */
   signUp: (
     email: string,
     password: string,

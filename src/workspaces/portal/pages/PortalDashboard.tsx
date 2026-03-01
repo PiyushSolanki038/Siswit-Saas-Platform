@@ -2,10 +2,8 @@
 
 import { useEffect, useState } from "react";
 import { useNavigate } from "react-router-dom";
-import { Button } from "@/ui/shadcn/button";
 import { useAuth } from "@/core/auth/useAuth";
 import { supabase } from "@/core/api/client";
-import { useToast } from "@/core/hooks/use-toast";
 import {
   FileText,
   FileSignature,
@@ -52,8 +50,6 @@ const quickActions: QuickAction[] = [
 const PortalDashboard = () => {
   const { user, loading: authLoading } = useAuth();
   const navigate = useNavigate();
-  const { toast } = useToast();
-
   const [dataLoading, setDataLoading] = useState(true);
   const [stats, setStats] = useState({
     quotes: 0,
@@ -102,8 +98,8 @@ const PortalDashboard = () => {
           documents: docsRes.count ?? 0,
           pendingSignatures: pendingRes.count ?? 0,
         });
-      } catch (err) {
-        console.error("Error fetching stats:", err);
+      } catch {
+        // Silently handle error fetching stats
       } finally {
         setDataLoading(false);
       }

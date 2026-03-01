@@ -173,14 +173,14 @@ export function TenantAdminLayout({ children }: TenantAdminLayoutProps) {
   const { tenantSlug = "" } = useParams<{ tenantSlug: string }>();
   const navigate = useNavigate();
 
-  if (isTenantUserRole(role)) {
-    return <DashboardLayout>{children}</DashboardLayout>;
-  }
-
   const menuItems = useMemo(
     () => buildTenantMenuItems(enabledModules, tenantSlug),
     [enabledModules, tenantSlug],
   );
+
+  if (isTenantUserRole(role)) {
+    return <DashboardLayout>{children}</DashboardLayout>;
+  }
 
   const handleSignOut = async () => {
     await signOut();

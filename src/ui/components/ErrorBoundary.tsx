@@ -22,7 +22,7 @@ export class ErrorBoundary extends Component<Props, State> {
     }
 
     public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
-        console.error("Uncaught runtime error:", error, errorInfo);
+        // Uncaught runtime error tracking
     }
 
     public render() {

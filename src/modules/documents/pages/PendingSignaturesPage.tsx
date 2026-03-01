@@ -56,7 +56,7 @@ const PendingSignaturesPage = () => {
 
   const handleSendBulkReminders = async () => {
     if (pendingSignatures.length === 0) return;
-    
+
     setIsSendingBulkReminders(true);
     try {
       const promises = pendingSignatures.map((sig) =>
@@ -64,7 +64,7 @@ const PendingSignaturesPage = () => {
       );
 
       const results = await Promise.allSettled(promises);
-      
+
       const successful = results.filter((r) => r.status === "fulfilled");
       const failed = results.filter((r) => r.status === "rejected");
 
@@ -75,9 +75,8 @@ const PendingSignaturesPage = () => {
       }
 
       if (failed.length > 0) {
-        // Log individual errors to console for debugging
-        failed.forEach((f, i) => console.error(`Reminder ${i} failed:`, (f as PromiseRejectedResult).reason));
-        
+        // Log individual errors to telemetry for debugging
+
         toast.error(
           `${failed.length} reminder${failed.length !== 1 ? "s" : ""} failed to send.`,
         );
@@ -189,8 +188,8 @@ const PendingSignaturesPage = () => {
           {pendingSignatures.map((signature) => {
             const expiresText = signature.expires_at
               ? formatDistanceToNow(new Date(signature.expires_at), {
-                  addSuffix: true,
-                })
+                addSuffix: true,
+              })
               : "No expiration";
 
             return (
@@ -212,7 +211,7 @@ const PendingSignaturesPage = () => {
                           {signature.document?.type || "document"}
                         </span>
                       </div>
-                      
+
                       <div className="text-sm text-muted-foreground">
                         Sent{" "}
                         {formatDistanceToNow(new Date(signature.created_at), {

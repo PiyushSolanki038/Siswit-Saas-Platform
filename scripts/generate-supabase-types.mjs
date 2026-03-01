@@ -6,7 +6,7 @@ import path from "node:path";
 import { promisify } from "node:util";
 
 const execFileAsync = promisify(execFile);
-const outputPath = path.resolve(process.cwd(), "src/integrations/supabase/types.ts");
+const outputPath = path.resolve(process.cwd(), "src/integrations/types.ts");
 
 function resolveSupabaseArgs() {
   const baseArgs = ["gen", "types", "typescript", "--schema", "public"];

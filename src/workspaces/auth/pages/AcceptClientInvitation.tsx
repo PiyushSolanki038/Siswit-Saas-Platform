@@ -38,10 +38,7 @@ export default function AcceptClientInvitation() {
       if (!token) return;
 
       const tokenHash = await hashToken(token);
-      // eslint-disable-next-line @typescript-eslint/no-explicit-any
-      const unsafeSupabase = supabase as unknown as any;
-
-      const { data } = await unsafeSupabase
+      const { data } = await supabase
         .from("client_invitations")
         .select("invited_email, organization:organizations(name, org_code)")
         .eq("token_hash", tokenHash)

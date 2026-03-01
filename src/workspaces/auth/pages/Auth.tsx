@@ -168,6 +168,7 @@ const Auth = () => {
                       onChange={(e) => setEmail(e.target.value)}
                       placeholder="Email"
                       required
+                      autoComplete="email"
                       className="h-11 rounded-xl border-input/80 bg-background/80 text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:ring-offset-0 dark:border-[#d5dbea]/80 dark:bg-[#c3c9d8] dark:text-[#1a2233] dark:placeholder:text-[#5f687e]"
                     />
                   </div>
@@ -179,6 +180,7 @@ const Auth = () => {
                       onChange={(e) => setPassword(e.target.value)}
                       placeholder="Password"
                       required
+                      autoComplete="current-password"
                       className="h-11 rounded-xl border-input/80 bg-background/80 pr-10 text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:ring-offset-0 dark:border-[#d5dbea]/80 dark:bg-[#c3c9d8] dark:text-[#1a2233] dark:placeholder:text-[#5f687e]"
                     />
                     <button

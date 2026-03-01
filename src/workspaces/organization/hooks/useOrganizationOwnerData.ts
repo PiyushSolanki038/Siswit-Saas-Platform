@@ -80,8 +80,6 @@ function getDaysLeftFromIso(value: string): number {
 }
 
 export function useOrganizationOwnerData() {
-  // eslint-disable-next-line @typescript-eslint/no-explicit-any
-  const unsafeSupabase = useMemo(() => supabase as unknown as any, []);
   const { organization, subscription } = useOrganization();
 
   const [memberships, setMemberships] = useState<OrganizationOwnerMembership[]>([]);
@@ -103,24 +101,24 @@ export function useOrganizationOwnerData() {
     setLoading(true);
     try {
       const [membershipsResult, employeeInvitesResult, clientInvitesResult, subscriptionResult] = await Promise.all([
-        unsafeSupabase
+        supabase
           .from("organization_memberships")
           .select("id, email, role, account_state, is_active, department, employee_id, created_at, updated_at")
           .eq("organization_id", organization.id)
           .order("created_at", { ascending: false }),
-        unsafeSupabase
+        supabase
           .from("employee_invitations")
           .select("id, invited_email, role, status, expires_at, created_at")
           .eq("organization_id", organization.id)
           .order("created_at", { ascending: false })
           .limit(25),
-        unsafeSupabase
+        supabase
           .from("client_invitations")
           .select("id, invited_email, status, expires_at, created_at")
           .eq("organization_id", organization.id)
           .order("created_at", { ascending: false })
           .limit(25),
-        unsafeSupabase
+        supabase
           .from("organization_subscriptions")
           .select("status, plan_type, trial_end_date")
           .eq("organization_id", organization.id)
@@ -134,7 +132,7 @@ export function useOrganizationOwnerData() {
     } finally {
       setLoading(false);
     }
-  }, [organization?.id, unsafeSupabase]);
+  }, [organization?.id]);
 
   useEffect(() => {
     void refresh();

@@ -1,4 +1,4 @@
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { Link, useLocation, useNavigate } from "react-router-dom";
 import {
   Menu,
@@ -41,10 +41,11 @@ const navigation = [
 export function Header() {
   const [mobileMenuOpen, setMobileMenuOpen] = useState(false);
   const [scrolled, setScrolled] = useState(false);
+  const requestedRoleRefreshForUser = useRef<string | null>(null);
 
   const location = useLocation();
   const navigate = useNavigate();
-  const { user, role, signOut, loading } = useAuth();
+  const { user, role, signOut, loading, refreshRole } = useAuth();
   const { organization } = useOrganization();
   const { tenant } = useTenant();
   const { theme, toggleTheme } = useTheme();
@@ -80,6 +81,22 @@ export function Header() {
   useEffect(() => {
     setMobileMenuOpen(false);
   }, [location.pathname]);
+
+  useEffect(() => {
+    if (!user?.id) {
+      requestedRoleRefreshForUser.current = null;
+      return;
+    }
+
+    if (!loading && !role && requestedRoleRefreshForUser.current !== user.id) {
+      requestedRoleRefreshForUser.current = user.id;
+      void refreshRole();
+    }
+
+    if (role && requestedRoleRefreshForUser.current === user.id) {
+      requestedRoleRefreshForUser.current = null;
+    }
+  }, [loading, refreshRole, role, user?.id]);
 
   /* -------------------- HANDLERS -------------------- */
 
@@ -182,11 +199,9 @@ export function Header() {
                 </DropdownMenuTrigger>
 
                 <DropdownMenuContent align="end">
-                  {role && (
-                    <div className="px-2 py-1">
-                      <RoleBadge role={role as AppRole} size="sm" />
-                    </div>
-                  )}
+                  <div className="px-2 py-1">
+                    <RoleBadge role={role} size="sm" />
+                  </div>
 
                   <DropdownMenuSeparator />
 
@@ -368,7 +383,7 @@ export function Header() {
                       My Account
                     </span>
                     <div className="flex">
-                      {role && <RoleBadge role={role as AppRole} size="sm" />}
+                      <RoleBadge role={role} size="sm" />
                     </div>
                   </div>
                 </div>

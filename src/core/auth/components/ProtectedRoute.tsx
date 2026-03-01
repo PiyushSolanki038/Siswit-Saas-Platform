@@ -25,15 +25,15 @@ function RouteLoader() {
  */
 export function PlatformAdminRoute({ children }: { children: React.ReactNode }) {
   const { user, role, loading } = useAuth();
-  
+
   if (loading) {
     return <RouteLoader />;
   }
-  
+
   if (!user || !isPlatformRole(role ?? "pending_approval")) {
     return <Navigate to="/unauthorized" replace />;
   }
-  
+
   return <>{children}</>;
 }
 
@@ -44,22 +44,22 @@ export function PendingApprovalRoute({ children }: { children: React.ReactNode }
   const { user, role, loading } = useAuth();
   const { tenant } = useTenant();
   const { organization } = useOrganization();
-  
+
   if (loading) {
     return <RouteLoader />;
   }
-  
+
   if (!user) {
     return <Navigate to="/auth/sign-in" replace />;
   }
-  
+
   // Allow access if role is pending_approval
-  if (isPendingApproval(role ?? "pending_approval")) {
+  if (role && isPendingApproval(role)) {
     return <>{children}</>;
   }
-  
+
   // If already approved, redirect to appropriate dashboard
-  if (isPlatformRole(role ?? "pending_approval")) {
+  if (role && isPlatformRole(role)) {
     return <Navigate to={platformPath()} replace />;
   }
   if (canAccessTenantWorkspace(role)) {
@@ -72,7 +72,7 @@ export function PendingApprovalRoute({ children }: { children: React.ReactNode }
     if (!workspaceSlug) return <Navigate to="/unauthorized" replace />;
     return <Navigate to={organizationPortalPath(workspaceSlug)} replace />;
   }
-  
+
   return <Navigate to="/auth/sign-in" replace />;
 }
 
@@ -81,15 +81,15 @@ export function PendingApprovalRoute({ children }: { children: React.ReactNode }
  */
 export function TenantAdminRoute({ children }: { children: React.ReactNode }) {
   const { user, role, loading } = useAuth();
-  
+
   if (loading) {
     return <RouteLoader />;
   }
-  
+
   if (!user) {
     return <Navigate to="/auth/sign-in" replace />;
   }
-  
+
   // Platform admin can also access
   if (isPlatformRole(role ?? "pending_approval")) {
     return <>{children}</>;
@@ -102,7 +102,7 @@ export function TenantAdminRoute({ children }: { children: React.ReactNode }) {
   if (isPendingApproval(role ?? "pending_approval")) {
     return <Navigate to="/pending-approval" replace />;
   }
-  
+
   return <Navigate to="/unauthorized" replace />;
 }
 
@@ -111,15 +111,15 @@ export function TenantAdminRoute({ children }: { children: React.ReactNode }) {
  */
 export function ClientRoute({ children }: { children: React.ReactNode }) {
   const { user, role, loading } = useAuth();
-  
+
   if (loading) {
     return <RouteLoader />;
   }
-  
+
   if (!user) {
     return <Navigate to="/auth/sign-in" replace />;
   }
-  
+
   if (role === "client") {
     return <>{children}</>;
   }
@@ -131,7 +131,7 @@ export function ClientRoute({ children }: { children: React.ReactNode }) {
   if (canAccessClientPortal(role)) {
     return <>{children}</>;
   }
-  
+
   return <Navigate to="/unauthorized" replace />;
 }
 
@@ -191,15 +191,15 @@ export function CustomerRoute({ children }: { children: React.ReactNode }) {
  */
 export function AdminRoute({ children }: { children: React.ReactNode }) {
   const { user, role, loading } = useAuth();
-  
+
   if (loading) {
     return <RouteLoader />;
   }
-  
+
   if (!user) {
     return <Navigate to="/auth/sign-in" replace />;
   }
-  
+
   if (isPlatformRole(role ?? "pending_approval") || isTenantAdminRole(role)) {
     return <>{children}</>;
   }
@@ -207,6 +207,6 @@ export function AdminRoute({ children }: { children: React.ReactNode }) {
   if (isPendingApproval(role ?? "pending_approval")) {
     return <Navigate to="/pending-approval" replace />;
   }
-  
+
   return <Navigate to="/unauthorized" replace />;
 }

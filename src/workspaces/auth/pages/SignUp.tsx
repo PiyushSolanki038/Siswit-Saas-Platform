@@ -24,6 +24,42 @@ function makeCode(name: string): string {
   return `${prefix}${suffix}`;
 }
 
+function PasswordStrength({ password }: { password: string }) {
+  const hasLength = password.length >= 12;
+  const hasUpper = /[A-Z]/.test(password);
+  const hasLower = /[a-z]/.test(password);
+  const hasNumber = /[0-9]/.test(password);
+  const hasSpecial = /[^A-Za-z0-9]/.test(password);
+  const passed = [hasLength, hasUpper, hasLower, hasNumber, hasSpecial].filter(Boolean).length;
+
+  if (!password) return null;
+
+  const barColor =
+    passed <= 2 ? "bg-red-500" : passed <= 3 ? "bg-amber-500" : passed <= 4 ? "bg-blue-500" : "bg-green-500";
+  const label = passed <= 2 ? "Weak" : passed <= 3 ? "Fair" : passed <= 4 ? "Good" : "Strong";
+
+  return (
+    <div className="space-y-1.5">
+      <div className="flex items-center gap-2">
+        <div className="h-1.5 flex-1 rounded-full bg-muted">
+          <div
+            className={`h-full rounded-full transition-all ${barColor}`}
+            style={{ width: `${(passed / 5) * 100}%` }}
+          />
+        </div>
+        <span className="text-xs font-medium text-muted-foreground">{label}</span>
+      </div>
+      <ul className="grid grid-cols-2 gap-x-2 gap-y-0.5 text-[11px] text-muted-foreground">
+        <li className={hasLength ? "text-green-600 dark:text-green-400" : ""}>• 12+ characters</li>
+        <li className={hasUpper ? "text-green-600 dark:text-green-400" : ""}>• Uppercase letter</li>
+        <li className={hasLower ? "text-green-600 dark:text-green-400" : ""}>• Lowercase letter</li>
+        <li className={hasNumber ? "text-green-600 dark:text-green-400" : ""}>• Number</li>
+        <li className={hasSpecial ? "text-green-600 dark:text-green-400" : ""}>• Special character</li>
+      </ul>
+    </div>
+  );
+}
+
 export default function SignUp() {
   const { signUpOrganization, signUpClientSelf, loading } = useAuth();
   const { toast } = useToast();
@@ -52,6 +88,7 @@ export default function SignUp() {
   const [clientConfirmPassword, setClientConfirmPassword] = useState("");
   const [clientSubmitting, setClientSubmitting] = useState(false);
   const [clientSubmitted, setClientSubmitted] = useState(false);
+  const [organizationSearchDone, setOrganizationSearchDone] = useState(false);
 
   const suggestedCode = useMemo(() => makeCode(organizationName || "ORG"), [organizationName]);
 
@@ -66,6 +103,7 @@ export default function SignUp() {
     if (query.length < 2) {
       setOrganizationSearchResults([]);
       setOrganizationSearchLoading(false);
+      setOrganizationSearchDone(false);
       return;
     }
 
@@ -90,11 +128,11 @@ export default function SignUp() {
           (row: unknown): row is SignupOrganizationRow =>
             Boolean(
               row &&
-                typeof row === "object" &&
-                "id" in row &&
-                "name" in row &&
-                "slug" in row &&
-                "org_code" in row,
+              typeof row === "object" &&
+              "id" in row &&
+              "name" in row &&
+              "slug" in row &&
+              "org_code" in row,
             ),
         );
 
@@ -262,6 +300,7 @@ export default function SignUp() {
           value={ownerFullName}
           onChange={(event) => setOwnerFullName(event.target.value)}
           required
+          autoComplete="name"
           className="h-11 rounded-xl border-input/80 bg-background/80 text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:ring-offset-0 dark:border-[#d5dbea]/80 dark:bg-[#c3c9d8] dark:text-[#1a2233] dark:placeholder:text-[#5f687e]"
         />
         <Input
@@ -270,6 +309,7 @@ export default function SignUp() {
           value={organizationEmail}
           onChange={(event) => setOrganizationEmail(event.target.value)}
           required
+          autoComplete="email"
           className="h-11 rounded-xl border-input/80 bg-background/80 text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:ring-offset-0 dark:border-[#d5dbea]/80 dark:bg-[#c3c9d8] dark:text-[#1a2233] dark:placeholder:text-[#5f687e]"
         />
         <Input
@@ -279,8 +319,10 @@ export default function SignUp() {
           onChange={(event) => setOrganizationPassword(event.target.value)}
           required
           minLength={12}
+          autoComplete="new-password"
           className="h-11 rounded-xl border-input/80 bg-background/80 text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:ring-offset-0 dark:border-[#d5dbea]/80 dark:bg-[#c3c9d8] dark:text-[#1a2233] dark:placeholder:text-[#5f687e]"
         />
+        <PasswordStrength password={organizationPassword} />
         <Input
           type="password"
           placeholder="Confirm Password"
@@ -288,6 +330,7 @@ export default function SignUp() {
           onChange={(event) => setOrganizationConfirmPassword(event.target.value)}
           required
           minLength={12}
+          autoComplete="new-password"
           className="h-11 rounded-xl border-input/80 bg-background/80 text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:ring-offset-0 dark:border-[#d5dbea]/80 dark:bg-[#c3c9d8] dark:text-[#1a2233] dark:placeholder:text-[#5f687e]"
         />
 
@@ -362,6 +405,10 @@ export default function SignUp() {
               ))}
             </div>
           )}
+
+          {!organizationSearchLoading && organizationSearchDone && organizationSearchResults.length === 0 && (
+            <p className="mt-2 text-xs text-muted-foreground">No organizations found. Check the name, slug, or code and try again.</p>
+          )}
         </div>
 
         {selectedOrganization && (
@@ -399,8 +446,10 @@ export default function SignUp() {
           onChange={(event) => setClientPassword(event.target.value)}
           required
           minLength={12}
+          autoComplete="new-password"
           className="h-11 rounded-xl border-input/80 bg-background/80 text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:ring-offset-0 dark:border-[#d5dbea]/80 dark:bg-[#c3c9d8] dark:text-[#1a2233] dark:placeholder:text-[#5f687e]"
         />
+        <PasswordStrength password={clientPassword} />
         <Input
           type="password"
           placeholder="Confirm Password"
@@ -408,6 +457,7 @@ export default function SignUp() {
           onChange={(event) => setClientConfirmPassword(event.target.value)}
           required
           minLength={12}
+          autoComplete="new-password"
           className="h-11 rounded-xl border-input/80 bg-background/80 text-foreground placeholder:text-muted-foreground focus-visible:ring-ring focus-visible:ring-offset-0 dark:border-[#d5dbea]/80 dark:bg-[#c3c9d8] dark:text-[#1a2233] dark:placeholder:text-[#5f687e]"
         />
 

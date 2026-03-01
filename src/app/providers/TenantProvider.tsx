@@ -185,7 +185,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
 
   const enabledModules: ModuleType[] = useMemo(() => {
     if (!subscription) {
-      return ["crm", "clm", "cpq", "erp", "documents"];
+      return [];
     }
 
     return [
