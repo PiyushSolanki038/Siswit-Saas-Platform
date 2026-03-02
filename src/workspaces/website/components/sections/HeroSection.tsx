@@ -1,28 +1,8 @@
 import { Link } from "react-router-dom";
 import { ArrowRight, Shield, Zap, Cloud, Bot } from "lucide-react";
 import { Button } from "@/ui/shadcn/button";
-import {
-  Carousel,
-  CarouselContent,
-  CarouselItem,
-} from "@/ui/shadcn/carousel";
-import Autoplay from "embla-carousel-autoplay";
 import heroBg from "@/assets/hero-bg.jpg";
-import dashboardMockup from "@/assets/hero-dashboard-mockup.png";
-import cpqImage from "@/assets/cpq-capability-map.png";
-import clmImage from "@/assets/clm-lifecycle.png";
-import crmImage from "@/assets/crm-diagram.png";
-import automationImage from "@/assets/automation-visual.png";
-import esignatureImage from "@/assets/esignature-workflow.png";
-
-const serviceImages = [
-  { src: dashboardMockup, alt: "Unified dashboard showing CPQ, CLM, and CRM modules", label: "Unified Platform" },
-  { src: cpqImage, alt: "CPQ capability map showing quote configuration", label: "CPQ" },
-  { src: clmImage, alt: "CLM lifecycle management workflow", label: "CLM" },
-  { src: crmImage, alt: "CRM customer relationship diagram", label: "CRM" },
-  { src: automationImage, alt: "Document automation visual workflow", label: "Automation" },
-  { src: esignatureImage, alt: "E-Signature workflow illustration", label: "E-Signature" },
-];
+import { HeroAnimation } from "./HeroAnimation";
 
 const highlights = [
   { icon: Shield, text: "Secure" }, // Shortened text for better fit
@@ -35,7 +15,7 @@ export function HeroSection() {
   return (
     // Changed min-h-screen to h-[100dvh] to force exact viewport height
     <section className="relative h-[100dvh] w-full flex items-center justify-center overflow-hidden">
-      
+
       {/* Background Image */}
       <div className="absolute inset-0 z-0">
         <img
@@ -53,54 +33,54 @@ export function HeroSection() {
 
       {/* Content Container - Uses h-full to maximize vertical space distribution */}
       <div className="container relative z-10 mx-auto px-4 sm:px-6 lg:px-8 h-full flex flex-col justify-center">
-        
+
         {/* Main Grid */}
         <div className="grid lg:grid-cols-2 gap-8 lg:gap-12 items-center h-full max-h-[900px] mx-auto">
-          
+
           {/* Left Column - Text */}
           <div className="text-center lg:text-left flex flex-col justify-center space-y-6 sm:space-y-8">
-            
+
             {/* Wrapper for text content to ensure it stays tight */}
             <div>
-                {/* Badge */}
-                <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-6 animate-fade-up">
+              {/* Badge */}
+              <div className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full bg-primary/10 border border-primary/20 mb-6 animate-fade-up">
                 <span className="w-2 h-2 rounded-full bg-primary animate-pulse" />
                 <span className="text-xs sm:text-sm font-medium text-primary">
-                    Trusted by 500+ enterprises
+                  Trusted by 500+ enterprises
                 </span>
-                </div>
+              </div>
 
-                {/* Main Heading - Clamped font sizes */}
-                <h1 className="font-bold tracking-tight leading-tight mb-4 animate-fade-up" style={{ animationDelay: "0.1s" }}>
-                  <span className="text-gradient block text-1xl sm:text-2xl lg:text-4xl xl:text-3xl ">
-                    One Unified Platform for
-                  </span>
+              {/* Main Heading - Clamped font sizes */}
+              <h1 className="font-bold tracking-tight leading-tight mb-4 animate-fade-up" style={{ animationDelay: "0.1s" }}>
+                <span className="text-gradient block text-1xl sm:text-2xl lg:text-4xl xl:text-3xl ">
+                  One Unified Platform for
+                </span>
 
-                  <span className="text-foreground block mt-1 text-3xl sm:text-3xl lg:text-4xl xl:text-5xl">
-                    CPQ, ERP, CLM & CRM
-                  </span>
-                </h1>
+                <span className="text-foreground block mt-1 text-3xl sm:text-3xl lg:text-4xl xl:text-5xl">
+                  CPQ, ERP, CLM & CRM
+                </span>
+              </h1>
 
 
-                {/* Subheading - Controlled width and size */}
-                <p className="text-base sm:text-lg text-muted-foreground max-w-lg mx-auto lg:mx-0 mb-6 sm:mb-8 animate-fade-up" style={{ animationDelay: "0.2s" }}>
+              {/* Subheading - Controlled width and size */}
+              <p className="text-base sm:text-lg text-muted-foreground max-w-lg mx-auto lg:mx-0 mb-6 sm:mb-8 animate-fade-up" style={{ animationDelay: "0.2s" }}>
                 SISWIT empowers your business with intelligent automation, seamless integrations, and enterprise-grade security.
-                </p>
+              </p>
 
-                {/* CTA Buttons */}
-                <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start animate-fade-up" style={{ animationDelay: "0.3s" }}>
+              {/* CTA Buttons */}
+              <div className="flex flex-col sm:flex-row gap-3 justify-center lg:justify-start animate-fade-up" style={{ animationDelay: "0.3s" }}>
                 <Link to="/contact">
-                    <Button variant="hero" size="lg" className="group w-full sm:w-auto">
+                  <Button variant="hero" size="lg" className="group w-full sm:w-auto">
                     Request Demo
                     <ArrowRight className="w-4 h-4 ml-2 group-hover:translate-x-1 transition-transform" />
-                    </Button>
+                  </Button>
                 </Link>
                 <Link to="/contact">
-                    <Button variant="heroOutline" size="lg" className="w-full sm:w-auto">
+                  <Button variant="heroOutline" size="lg" className="w-full sm:w-auto">
                     Contact Sales
-                    </Button>
+                  </Button>
                 </Link>
-                </div>
+              </div>
             </div>
 
             {/* Highlights - Compact layout */}
@@ -117,40 +97,13 @@ export function HeroSection() {
             </div>
           </div>
 
-          {/* Right Column - Service Images Carousel */}
-          {/* Constrained max-height ensures image doesn't force scroll */}
-          {/* Right Column - Service Images Carousel */}
+          {/* Right Column - Animation Art */}
           <div className="hidden lg:flex items-center justify-center animate-fade-up h-full max-h-[60vh]" style={{ animationDelay: "0.5s" }}>
-            <div className="relative w-full max-w-[600px]">
-              {/* Removed the glowing background blob div here */}
-              <Carousel
-                opts={{ align: "start", loop: true }}
-                plugins={[Autoplay({ delay: 3000, stopOnInteraction: false })]}
-                className="w-full"
-              >
-                <CarouselContent>
-                  {serviceImages.map((image, index) => (
-                    <CarouselItem key={index}>
-                      <div className="relative grid place-items-center">
-                        {/* Cleaned up image styles: removed border, shadow, rounded corners, background */}
-                        <img
-                          src={image.src}
-                          alt={image.alt}
-                          className="relative w-full max-h-[500px] object-contain"
-                        />
-                        {/* Kept the label, let me know if this should be removed too */}
-                        <div className="absolute bottom-4 left-4 bg-background/90 backdrop-blur-sm px-3 py-1.5 rounded-lg border border-border/50 shadow-lg">
-                          <span className="text-xs sm:text-sm font-semibold text-foreground">{image.label}</span>
-                        </div>
-                      </div>
-                    </CarouselItem>
-                  ))}
-                </CarouselContent>
-              </Carousel>
-            </div>
+            <HeroAnimation />
           </div>
         </div>
       </div>
+
 
       {/* Scroll indicator - Absolute bottom, small footprint */}
       {/* <div className="absolute bottom-4 left-1/2 -translate-x-1/2 animate-bounce hidden sm:block">
