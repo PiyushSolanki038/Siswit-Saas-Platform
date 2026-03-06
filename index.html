@@ -1,28 +1,33 @@
 <!doctype html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>SISWIT | Unified Cloud Platform for CPQ, CLM & CRM</title>
-    <meta name="description" content="SISWIT empowers enterprises with a unified cloud platform for Configure-Price-Quote (CPQ), Contract Lifecycle Management (CLM), and Customer Relationship Management (CRM). Transform your business operations." />
-    <meta name="author" content="SISWIT" />
-    <meta name="keywords" content="CPQ, CLM, CRM, SaaS, enterprise software, cloud platform, configure price quote, contract management, customer relationship management" />
-    <link rel="canonical" href="https://SISWIT.com" />
 
-    <meta property="og:title" content="SISWIT | Unified Cloud Platform for CPQ, CLM & CRM" />
-    <meta property="og:description" content="One platform for CPQ, CLM & CRM. Streamline your sales, contracts, and customer relationships with enterprise-grade automation." />
-    <meta property="og:type" content="website" />
-    <meta property="og:url" content="https://SISWIT.com" />
-    <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
-    <meta property="og:site_name" content="SISWIT" />
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>SISWIT | Unified Cloud Platform for CPQ, CLM & CRM</title>
+  <meta name="description"
+    content="SISWIT empowers enterprises with a unified cloud platform for Configure-Price-Quote (CPQ), Contract Lifecycle Management (CLM), and Customer Relationship Management (CRM). Transform your business operations." />
+  <meta name="author" content="SISWIT" />
+  <meta name="keywords"
+    content="CPQ, CLM, CRM, SaaS, enterprise software, cloud platform, configure price quote, contract management, customer relationship management" />
+  <link rel="canonical" href="https://SISWIT.com" />
 
-    <meta name="twitter:card" content="summary_large_image" />
-    <meta name="twitter:site" content="@SISWIT" />
-    <meta name="twitter:title" content="SISWIT | Unified Cloud Platform for CPQ, CLM & CRM" />
-    <meta name="twitter:description" content="One platform for CPQ, CLM & CRM. Streamline your sales, contracts, and customer relationships." />
-    <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+  <meta property="og:title" content="SISWIT | Unified Cloud Platform for CPQ, CLM & CRM" />
+  <meta property="og:description"
+    content="One platform for CPQ, CLM & CRM. Streamline your sales, contracts, and customer relationships with enterprise-grade automation." />
+  <meta property="og:type" content="website" />
+  <meta property="og:url" content="https://SISWIT.com" />
+  <meta property="og:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+  <meta property="og:site_name" content="SISWIT" />
 
-    <script type="application/ld+json">
+  <meta name="twitter:card" content="summary_large_image" />
+  <meta name="twitter:site" content="@SISWIT" />
+  <meta name="twitter:title" content="SISWIT | Unified Cloud Platform for CPQ, CLM & CRM" />
+  <meta name="twitter:description"
+    content="One platform for CPQ, CLM & CRM. Streamline your sales, contracts, and customer relationships." />
+  <meta name="twitter:image" content="https://lovable.dev/opengraph-image-p98pqg.png" />
+
+  <script type="application/ld+json">
     {
       "@context": "https://schema.org",
       "@type": "SoftwareApplication",
@@ -33,26 +38,27 @@
       "offers": {
         "@type": "Offer",
         "price": "49",
-        "priceCurrency": "USD"
+        "priceCurrency": "INR"
       }
     }
     </script>
-    <script>
-      // Apply dark theme on initial load to prevent flash of light theme
-      const savedTheme = localStorage.getItem('theme');
-      const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
-      const theme = savedTheme || (prefersDark ? 'dark' : 'light');
-      
-      if (theme === 'dark') {
-        document.documentElement.classList.add('dark');
-      } else {
-        document.documentElement.classList.remove('dark');
-      }
-    </script>
-  </head>
+  <script>
+    // Apply dark theme on initial load to prevent flash of light theme
+    const savedTheme = localStorage.getItem('theme');
+    const prefersDark = window.matchMedia('(prefers-color-scheme: dark)').matches;
+    const theme = savedTheme || (prefersDark ? 'dark' : 'light');
 
-  <body>
-    <div id="root"></div>
-    <script type="module" src="/src/main.tsx"></script>
-  </body>
+    if (theme === 'dark') {
+      document.documentElement.classList.add('dark');
+    } else {
+      document.documentElement.classList.remove('dark');
+    }
+  </script>
+</head>
+
+<body>
+  <div id="root"></div>
+  <script type="module" src="/src/main.tsx"></script>
+</body>
+
 </html>

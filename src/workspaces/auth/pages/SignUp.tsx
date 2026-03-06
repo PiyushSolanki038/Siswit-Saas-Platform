@@ -622,7 +622,7 @@ export default function SignUp() {
                 </div>
 
                 <Tabs value={activeTab} onValueChange={setTab} className="mt-6">
-                  <TabsList className="grid h-11 w-full grid-cols-2 rounded-xl bg-accent/0 p-1 dark:border dark:border-white/10 dark:bg-white/5">
+                  <TabsList className="grid h-11 w-full grid-cols-2 rounded-xl bg-accent/90 p-1 dark:border dark:border-white/10 dark:bg-white/5">
                     <TabsTrigger
                       value="organization"
                       className="rounded-lg text-sm font-medium text-foreground/80 dark:text-white/70 data-[state=active]:bg-primary data-[state=active]:text-primary-foreground dark:data-[state=active]:bg-[#9d84e8] dark:data-[state=active]:text-white"

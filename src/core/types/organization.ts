@@ -1,7 +1,10 @@
+import type { ModuleType } from "./modules";
+
 export type OrganizationStatus = "active" | "suspended" | "cancelled" | "trial";
 export type OrganizationPlan = "starter" | "professional" | "enterprise";
 
-export type ModuleType = "crm" | "clm" | "cpq" | "erp" | "documents";
+// Re-export for consumers that import ModuleType from this file
+export type { ModuleType } from "./modules";
 
 export interface Organization {
   id: string;

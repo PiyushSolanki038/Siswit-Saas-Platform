@@ -5,6 +5,10 @@
  */
 
 import { AppRole } from "./roles";
+import type { ModuleType } from "./modules";
+
+// Re-export for consumers that import from this file
+export type { ModuleType } from "./modules";
 
 /**
  * Tenant status
@@ -15,11 +19,6 @@ export type TenantStatus = "active" | "suspended" | "cancelled" | "trial";
  * Subscription plan types
  */
 export type PlanType = "starter" | "professional" | "enterprise";
-
-/**
- * Available modules in the system
- */
-export type ModuleType = "crm" | "clm" | "cpq" | "erp" | "documents";
 
 /**
  * Tenant subscription - tracks which modules are enabled for a tenant
@@ -49,24 +48,24 @@ export interface Tenant {
   slug: string;
   status: TenantStatus;
   plan_type: PlanType;
-  
+
   // Company details
   company_name?: string;
   company_email?: string;
   company_phone?: string;
   company_address?: string;
   company_website?: string;
-  
+
   // Branding
   logo_url?: string;
   primary_color?: string;
-  
+
   // Subscription
   subscription_start_date?: string;
   subscription_end_date?: string;
   max_users: number;
   max_storage_mb: number;
-  
+
   // Timestamps
   created_at: string;
   updated_at: string;
@@ -85,7 +84,7 @@ export interface TenantUser {
   is_approved: boolean;
   created_at: string;
   updated_at: string;
-  
+
   // Populated relations
   tenant?: Tenant;
 }
@@ -132,19 +131,19 @@ export interface AuthUser {
   email: string;
   email_confirmed_at?: string;
   created_at: string;
-  
+
   // Platform-level role (for SaaS owner)
   platform_role?: AppRole;
-  
+
   // Tenant-level role
   tenant_id?: string;
   tenant_role?: AppRole;
   tenant?: Tenant;
   tenant_subscription?: TenantSubscription;
-  
+
   // Approval status
   is_approved: boolean;
-  
+
   // All tenant memberships (user might belong to multiple tenants)
   tenant_memberships?: TenantUser[];
 }
@@ -173,7 +172,7 @@ export const isModuleEnabled = (
   module: ModuleType
 ): boolean => {
   if (!subscription) return false;
-  
+
   switch (module) {
     case "crm":
       return subscription.module_crm;
@@ -197,13 +196,13 @@ export const getEnabledModules = (
   subscription: TenantSubscription | undefined
 ): ModuleType[] => {
   if (!subscription) return [];
-  
+
   const modules: ModuleType[] = [];
   if (subscription.module_crm) modules.push("crm");
   if (subscription.module_clm) modules.push("clm");
   if (subscription.module_cpq) modules.push("cpq");
   if (subscription.module_erp) modules.push("erp");
   if (subscription.module_documents) modules.push("documents");
-  
+
   return modules;
 };

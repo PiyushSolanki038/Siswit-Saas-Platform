@@ -357,7 +357,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         setLoading(false);
       }
     },
-    [createOrganization, unsafeSupabase, upsertProfile],
+    [createOrganization, upsertProfile],
   );
 
   const findOrganizationBySlugOrCode = useCallback(
