@@ -95,7 +95,7 @@ export default function QuoteBuilderPage() {
       if (!user?.id) throw new Error("User not authenticated");
       const { data, error } = await supabase
         .from("accounts")
-        .select("id, name, address, city, state, postal_code, country")
+        .select("id, name, billing_address, billing_city, billing_state, billing_zip, billing_country")
         .or(`owner_id.eq.${user.id},created_by.eq.${user.id}`)
         .order("name");
       if (error) throw error;
@@ -268,8 +268,8 @@ export default function QuoteBuilderPage() {
                     </Select>
                     {selectedAccountDetails && (
                       <div className="text-xs text-muted-foreground p-2 bg-muted/50 rounded-md">
-                        <p className="font-medium">Bill To: {selectedAccountDetails.address}</p>
-                        <p>{selectedAccountDetails.city}, {selectedAccountDetails.state}</p>
+                        <p className="font-medium">Bill To: {selectedAccountDetails.billing_address}</p>
+                        <p>{selectedAccountDetails.billing_city}, {selectedAccountDetails.billing_state}</p>
                       </div>
                     )}
                   </div>
@@ -392,7 +392,8 @@ export default function QuoteBuilderPage() {
                   </div>
                 </div>
                 <div className="space-y-2 pt-2">
-                  <Button className="w-full h-11" onClick={() => handleSaveQuote("pending_approval")} disabled={(createQuoteMutation.isPending || updateQuoteMutation.isPending) || (!isEditMode && items.length === 0)}>Submit Quote</Button>                </div>
+                  <Button className="w-full h-11" onClick={() => handleSaveQuote("pending_approval")} disabled={(createQuoteMutation.isPending || updateQuoteMutation.isPending) || (!isEditMode && items.length === 0)}>Submit Quote</Button>
+                </div>
               </CardContent>
             </Card>
           </div>
@@ -401,3 +402,4 @@ export default function QuoteBuilderPage() {
     </div>
   );
 }
+
