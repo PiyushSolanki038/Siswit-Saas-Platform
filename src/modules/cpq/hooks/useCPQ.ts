@@ -68,7 +68,10 @@ export function useProducts() {
         .order("name");
 
       if (error) throw error;
-      return (data ?? []) as Product[];
+      return (data ?? []).map((item) => ({
+        ...item,
+        unit_price: item.list_price ?? 0,
+      })) as Product[];
     },
   });
 }
@@ -91,7 +94,7 @@ export function useCreateProduct() {
         },
         scope,
         { ownerColumn: null },
-      );
+      ) as any;
 
       const { data, error } = await supabase.from("products").insert(payload).select().single();
       if (error) throw error;
@@ -294,7 +297,7 @@ export function useCreateQuote() {
           quote_number: quoteData.quote_number || `QT-${Date.now()}`,
         },
         scope,
-      );
+      ) as any;
 
       const { data, error } = await supabase.from("quotes").insert(payload).select().single();
       if (error) throw error;
@@ -304,6 +307,7 @@ export function useCreateQuote() {
         const itemPayload = items.map((item, index) => ({
           quote_id: data.id,
           organization_id: requiredOrganizationId,
+          tenant_id: requiredOrganizationId,
           product_id: item.product_id,
           product_name: item.product_name,
           description: item.description,
@@ -312,7 +316,7 @@ export function useCreateQuote() {
           discount_percent: item.discount_percent,
           total: item.total,
           sort_order: index,
-        }));
+        })) as any;
 
         const itemsResult = await supabase.from("quote_items").insert(itemPayload);
         if (itemsResult.error) throw itemsResult.error;

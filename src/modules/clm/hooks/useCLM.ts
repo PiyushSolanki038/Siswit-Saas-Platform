@@ -36,7 +36,6 @@ interface ESignatureRow {
   status: string | null;
   signed_at: string | null;
   created_at: string | null;
-  updated_at: string | null;
 }
 
 function getErrorMessage(error: unknown): string {
@@ -53,7 +52,7 @@ function mapESignature(row: ESignatureRow): ESignature {
     status: (row.status ?? "pending") as ESignature["status"],
     signed_at: row.signed_at ?? undefined,
     created_at: row.created_at ?? new Date().toISOString(),
-    updated_at: row.updated_at ?? new Date().toISOString(),
+    updated_at: row.created_at ?? new Date().toISOString(),
   };
 }
 
@@ -131,7 +130,7 @@ export function useCreateContractTemplate() {
         },
         scope,
         { ownerColumn: "created_by", createdByColumn: "created_by" },
-      );
+      ) as any;
 
       const { data, error } = await supabase.from("contract_templates").insert(payload).select().single();
       if (error) throw error;
@@ -302,7 +301,7 @@ export function useCreateContract() {
           value: contract.value,
         },
         scope,
-      );
+      ) as any;
 
       const { data, error } = await supabase.from("contracts").insert(payload).select().single();
       if (error) throw error;
@@ -457,7 +456,7 @@ export function useESignatures(contractId: string) {
         .order("created_at", { ascending: false });
 
       if (error) throw error;
-      return (data ?? []).map((item) => mapESignature(item as ESignatureRow));
+      return (data ?? []).map((item) => mapESignature(item as unknown as ESignatureRow));
     },
   });
 }
@@ -512,7 +511,7 @@ export function useCreateESignature() {
         newValues: data,
       });
 
-      return mapESignature(data as ESignatureRow);
+      return mapESignature(data as unknown as ESignatureRow);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["esignatures", variables.contract_id] });
@@ -549,7 +548,7 @@ export function useUpdateESignature() {
         newValues: payload,
       });
 
-      return mapESignature(data as ESignatureRow);
+      return mapESignature(data as unknown as ESignatureRow);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["esignatures"] });
