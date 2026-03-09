@@ -4,7 +4,7 @@ import { toast } from "sonner";
 import { supabase } from "@/core/api/client";
 import { useAuth } from "@/core/auth/useAuth";
 import { useOrganization } from "@/workspaces/organization/hooks/useOrganization";
-import type { Product, Quote, QuoteItem } from "@/core/types/cpq";
+import type { Product, Quote, QuoteItem, QuoteStatus } from "@/core/types/cpq";
 import {
   applyModuleMutationScope,
   applyModuleReadScope,
@@ -19,6 +19,107 @@ import { writeAuditLog } from "@/core/utils/audit";
 function getErrorMessage(error: unknown): string {
   if (error instanceof Error) return error.message;
   return String(error);
+}
+
+// ===== QUOTE STATUS VALIDATION =====
+const QUOTE_STATUS_TRANSITIONS: Record<QuoteStatus, QuoteStatus[]> = {
+  draft: ["pending_approval", "cancelled"],
+  pending_approval: ["approved", "rejected", "cancelled"],
+  approved: ["sent", "cancelled"],
+  sent: ["accepted", "rejected", "expired", "cancelled"],
+  accepted: [],
+  rejected: [],
+  expired: [],
+  cancelled: [],
+};
+
+function validateQuoteStatusTransition(currentStatus: string, nextStatus: string) {
+  const allowedNextStatuses = QUOTE_STATUS_TRANSITIONS[currentStatus as QuoteStatus] ?? [];
+  if (!allowedNextStatuses.includes(nextStatus as QuoteStatus)) {
+    throw new Error(`Invalid quote status transition from "${currentStatus}" to "${nextStatus}"`);
+  }
+}
+
+// ===== QUOTE CALCULATION HELPERS =====
+function calculateQuoteItemTotal(item: Partial<QuoteItem>) {
+  const quantity = Number(item.quantity ?? 0);
+  const unitPrice = Number(item.unit_price ?? 0);
+  const discountPercent = Number(item.discount_percent ?? 0);
+
+  const lineSubtotal = quantity * unitPrice;
+  const discountAmount = (lineSubtotal * discountPercent) / 100;
+
+  return Math.max(0, lineSubtotal - discountAmount);
+}
+
+function calculateQuoteTotals(
+  items: Partial<QuoteItem>[],
+  discountPercent = 0,
+  taxPercent = 0,
+) {
+  const subtotal = items.reduce((sum, item) => sum + calculateQuoteItemTotal(item), 0);
+  const quoteDiscountAmount = (subtotal * Number(discountPercent || 0)) / 100;
+  const taxableAmount = subtotal - quoteDiscountAmount;
+  const taxAmount = (taxableAmount * Number(taxPercent || 0)) / 100;
+  const totalAmount = taxableAmount + taxAmount;
+
+  return {
+    subtotal,
+    discountAmount: quoteDiscountAmount,
+    taxAmount,
+    totalAmount,
+  };
+}
+
+// Recompute quote totals after line item changes
+async function recomputeQuoteTotals(
+  quoteId: string,
+  scope: ModuleScopeContext,
+) {
+  const { organizationId: requiredOrganizationId } = requireOrganizationScope(scope);
+
+  const { data: quote, error: quoteError } = await applyModuleReadScope(
+    supabase
+      .from("quotes")
+      .select("id, discount_percent, tax_percent")
+      .eq("id", quoteId),
+    scope,
+    { ownerColumns: ["owner_id"] },
+  ).single();
+
+  if (quoteError || !quote) {
+    throw quoteError || new Error("Quote not found");
+  }
+
+  const { data: items, error: itemsError } = await supabase
+    .from("quote_line_items")
+    .select("quantity, unit_price, discount_percent")
+    .eq("quote_id", quoteId)
+    .eq("organization_id", requiredOrganizationId)
+    .is("deleted_at", null);
+
+  if (itemsError) throw itemsError;
+
+  const computed = calculateQuoteTotals(
+    (items ?? []) as Partial<QuoteItem>[],
+    Number(quote.discount_percent ?? 0),
+    Number(quote.tax_percent ?? 0),
+  );
+
+  const scopedUpdate = applyModuleMutationScope(
+    supabase.from("quotes").update({
+      subtotal: computed.subtotal,
+      discount_amount: computed.discountAmount,
+      tax_amount: computed.taxAmount,
+      total_amount: computed.totalAmount,
+      updated_at: new Date().toISOString(),
+    }).eq("id", quoteId),
+    scope,
+    ["owner_id"],
+  );
+
+  const { error: updateError } = await scopedUpdate;
+  if (updateError) throw updateError;
 }
 
 function useCpqScope() {
@@ -280,6 +381,14 @@ export function useCreateQuote() {
     mutationFn: async (quote: Omit<Partial<Quote>, "id" | "created_at" | "updated_at"> & { items?: QuoteItem[] }) => {
       const { items, ...quoteData } = quote;
 
+      // Compute totals from items safely
+      const safeItems = items ?? [];
+      const computed = calculateQuoteTotals(
+        safeItems,
+        Number(quoteData.discount_percent || 0),
+        Number(quoteData.tax_percent || 0),
+      );
+
       const payload = buildModuleCreatePayload(
         {
           account_id: quoteData.account_id || null,
@@ -289,12 +398,12 @@ export function useCreateQuote() {
           expiration_date: quoteData.valid_until || null,
           payment_terms: quoteData.terms,
           notes: quoteData.notes,
-          subtotal: quoteData.subtotal || 0,
+          subtotal: computed.subtotal,
           discount_percent: quoteData.discount_percent || 0,
-          discount_amount: quoteData.discount_amount || 0,
+          discount_amount: computed.discountAmount,
           tax_percent: quoteData.tax_percent || 0,
-          tax_amount: quoteData.tax_amount || 0,
-          total_amount: quoteData.total || 0,
+          tax_amount: computed.taxAmount,
+          total_amount: computed.totalAmount,
           quote_number: quoteData.quote_number || `QT-${Date.now()}`,
         },
         scope,
@@ -315,11 +424,11 @@ export function useCreateQuote() {
           quantity: item.quantity,
           unit_price: item.unit_price,
           discount_percent: item.discount_percent,
-          total: item.total,
+          total: calculateQuoteItemTotal(item),
           sort_order: index,
         })) as any;
 
-        const itemsResult = await supabase.from("quote_items").insert(itemPayload);
+        const itemsResult = await supabase.from("quote_line_items").insert(itemPayload);
         if (itemsResult.error) throw itemsResult.error;
       }
 
@@ -362,15 +471,64 @@ export function useUpdateQuote() {
       if (updates.valid_until !== undefined) payload.expiration_date = updates.valid_until;
       if (updates.terms !== undefined) payload.payment_terms = updates.terms;
       if (updates.notes !== undefined) payload.notes = updates.notes;
-      if (updates.subtotal !== undefined) payload.subtotal = updates.subtotal;
-      if (updates.discount_percent !== undefined) payload.discount_percent = updates.discount_percent;
-      if (updates.discount_amount !== undefined) payload.discount_amount = updates.discount_amount;
-      if (updates.tax_percent !== undefined) payload.tax_percent = updates.tax_percent;
-      if (updates.tax_amount !== undefined) payload.tax_amount = updates.tax_amount;
-      if (updates.total !== undefined) payload.total_amount = updates.total;
       if (updates.account_id !== undefined) payload.account_id = updates.account_id;
       if (updates.contact_id !== undefined) payload.contact_id = updates.contact_id;
       if (updates.opportunity_id !== undefined) payload.opportunity_id = updates.opportunity_id;
+
+      // If quote-level discount_percent or tax_percent is being updated,
+      // or if totals are being directly manipulated, fetch current line items and recompute
+      const isTotalsUpdate =
+        updates.discount_percent !== undefined ||
+        updates.tax_percent !== undefined ||
+        updates.subtotal !== undefined ||
+        updates.discount_amount !== undefined ||
+        updates.tax_amount !== undefined ||
+        updates.total !== undefined;
+
+      if (isTotalsUpdate) {
+        // Fetch current quote values to preserve existing ones
+        const { data: existingQuote, error: quoteError } = await applyModuleReadScope(
+          supabase.from("quotes").select("discount_percent, tax_percent").eq("id", id),
+          scope,
+          { ownerColumns: ["owner_id"] },
+        ).single();
+
+        if (quoteError || !existingQuote) throw quoteError || new Error("Quote not found");
+
+        // Fetch current line items to recompute totals
+        const { organizationId: requiredOrganizationId } = requireOrganizationScope(scope);
+        const { data: currentItems, error: itemsError } = await supabase
+          .from("quote_line_items")
+          .select("quantity, unit_price, discount_percent")
+          .eq("quote_id", id)
+          .eq("organization_id", requiredOrganizationId)
+          .is("deleted_at", null);
+
+        if (itemsError) throw itemsError;
+
+        const items: Partial<QuoteItem>[] = (currentItems ?? []).map((item) => ({
+          quantity: item.quantity ?? 0,
+          unit_price: item.unit_price ?? 0,
+          discount_percent: item.discount_percent ?? 0,
+        }));
+
+        // Use existing quote values if not provided in updates
+        const discountPercent = Number(
+          updates.discount_percent ?? existingQuote.discount_percent ?? 0
+        );
+        const taxPercent = Number(
+          updates.tax_percent ?? existingQuote.tax_percent ?? 0
+        );
+
+        const computed = calculateQuoteTotals(items, discountPercent, taxPercent);
+
+        payload.subtotal = computed.subtotal;
+        payload.discount_percent = discountPercent;
+        payload.discount_amount = computed.discountAmount;
+        payload.tax_percent = taxPercent;
+        payload.tax_amount = computed.taxAmount;
+        payload.total_amount = computed.totalAmount;
+      }
 
       const scopedQuery = applyModuleMutationScope(
         supabase.from("quotes").update(payload).eq("id", id),
@@ -418,7 +576,7 @@ export function useDeleteQuote() {
       await ensureQuoteAccessible(id, scope);
 
       const { error: childError } = await supabase
-        .from("quote_items")
+        .from("quote_line_items")
         .update({
           deleted_at: new Date().toISOString(),
           deleted_by: userId,
@@ -459,14 +617,14 @@ export function useQuoteItems(quoteId: string) {
   const { scope, enabled, tenantId, userId } = useCpqScope();
 
   return useQuery({
-    queryKey: ["quote_items", quoteId, tenantId, userId],
+    queryKey: ["quote_line_items", quoteId, tenantId, userId],
     enabled: enabled && Boolean(quoteId),
     queryFn: async () => {
       await ensureQuoteAccessible(quoteId, scope);
 
       const { organizationId: requiredOrganizationId } = requireOrganizationScope(scope);
       const { data, error } = await supabase
-        .from("quote_items")
+        .from("quote_line_items")
         .select("*")
         .eq("quote_id", quoteId)
         .eq("organization_id", requiredOrganizationId)
@@ -490,7 +648,7 @@ export function useCreateQuoteItem() {
 
       const { organizationId: requiredOrganizationId } = requireOrganizationScope(scope);
       const { data, error } = await supabase
-        .from("quote_items")
+        .from("quote_line_items")
         .insert({
           quote_id: quoteId,
           organization_id: requiredOrganizationId,
@@ -500,13 +658,16 @@ export function useCreateQuoteItem() {
           quantity: item.quantity || 1,
           unit_price: item.unit_price || 0,
           discount_percent: item.discount_percent || 0,
-          total: item.total || 0,
+          total: calculateQuoteItemTotal(item),
           sort_order: item.sort_order || 0,
         })
         .select()
         .single();
 
       if (error) throw error;
+
+      // Recompute quote totals after adding new item
+      await recomputeQuoteTotals(quoteId, scope);
 
       void writeAuditLog({
         action: "quote_item_create",
@@ -520,7 +681,7 @@ export function useCreateQuoteItem() {
       return data as QuoteItem;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["quote_items", variables.quote_id] });
+      queryClient.invalidateQueries({ queryKey: ["quote_line_items", variables.quote_id] });
       toast.success("Quote item added successfully");
     },
     onError: (error: unknown) => {
@@ -544,12 +705,40 @@ export function useUpdateQuoteItem() {
       if (updates.quantity !== undefined) payload.quantity = updates.quantity;
       if (updates.unit_price !== undefined) payload.unit_price = updates.unit_price;
       if (updates.discount_percent !== undefined) payload.discount_percent = updates.discount_percent;
-      if (updates.total !== undefined) payload.total = updates.total;
+      
+      // Recompute total if quantity, unit_price, or discount_percent changed
+      if (
+        updates.quantity !== undefined ||
+        updates.unit_price !== undefined ||
+        updates.discount_percent !== undefined
+      ) {
+        // Fetch current item to get any unchanged values with proper scope protection
+        const { organizationId: requiredOrganizationId } = requireOrganizationScope(scope);
+        const { data: currentItem, error: currentItemError } = await supabase
+          .from("quote_line_items")
+          .select("quantity, unit_price, discount_percent")
+          .eq("id", id)
+          .eq("organization_id", requiredOrganizationId)
+          .single();
+
+        if (currentItemError || !currentItem) {
+          throw currentItemError || new Error("Quote item not found");
+        }
+
+        const mergedItem = {
+          quantity: updates.quantity ?? currentItem.quantity ?? 0,
+          unit_price: updates.unit_price ?? currentItem.unit_price ?? 0,
+          discount_percent: updates.discount_percent ?? currentItem.discount_percent ?? 0,
+        };
+
+        payload.total = calculateQuoteItemTotal(mergedItem);
+      }
+      
       if (updates.sort_order !== undefined) payload.sort_order = updates.sort_order;
 
       const { organizationId: requiredOrganizationId } = requireOrganizationScope(scope);
       const { data, error } = await supabase
-        .from("quote_items")
+        .from("quote_line_items")
         .update(payload)
         .eq("id", id)
         .eq("organization_id", requiredOrganizationId)
@@ -557,6 +746,9 @@ export function useUpdateQuoteItem() {
         .single();
 
       if (error) throw error;
+
+      // Recompute quote totals after updating item
+      await recomputeQuoteTotals(quoteId, scope);
 
       void writeAuditLog({
         action: "quote_item_update",
@@ -570,7 +762,7 @@ export function useUpdateQuoteItem() {
       return data as QuoteItem;
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["quote_items", variables.quoteId] });
+      queryClient.invalidateQueries({ queryKey: ["quote_line_items", variables.quoteId] });
       toast.success("Quote item updated successfully");
     },
     onError: (error: unknown) => {
@@ -588,13 +780,16 @@ export function useDeleteQuoteItem() {
       await ensureQuoteAccessible(quoteId, scope);
 
       const deleted = await softDeleteRecord({
-        table: "quote_items",
+        table: "quote_line_items",
         id,
         userId,
         organizationId: tenantId || "",
       });
 
       if (!deleted) throw new Error("Failed to delete quote item");
+
+      // Recompute quote totals after deleting item
+      await recomputeQuoteTotals(quoteId, scope);
 
       void writeAuditLog({
         action: "quote_item_delete",
@@ -605,7 +800,7 @@ export function useDeleteQuoteItem() {
       });
     },
     onSuccess: (_, variables) => {
-      queryClient.invalidateQueries({ queryKey: ["quote_items", variables.quoteId] });
+      queryClient.invalidateQueries({ queryKey: ["quote_line_items", variables.quoteId] });
       toast.success("Quote item moved to recycle bin");
     },
     onError: (error: unknown) => {
@@ -620,7 +815,22 @@ export function useUpdateQuoteStatus() {
   const { scope, tenantId, userId } = useCpqScope();
 
   return useMutation({
-    mutationFn: async ({ id, status }: { id: string; status: string }) => {
+    mutationFn: async ({ id, status }: { id: string; status: QuoteStatus }) => {
+      // First fetch current status to validate transition
+      const readQuery = applyModuleReadScope(
+        supabase.from("quotes").select("id, status").eq("id", id),
+        scope,
+        { ownerColumns: ["owner_id"] },
+      );
+
+      const { data: existingQuote, error: readError } = await readQuery.single();
+      if (readError || !existingQuote) throw readError || new Error("Quote not found");
+
+      // Validate status transition
+      const currentStatus = existingQuote.status ?? "draft";
+      validateQuoteStatusTransition(currentStatus, status);
+
+      // Now perform the update
       const scopedQuery = applyModuleMutationScope(
         supabase
           .from("quotes")

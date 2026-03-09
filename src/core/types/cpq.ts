@@ -1,6 +1,6 @@
 // CPQ (Configure Price Quote) Type Definitions
 
-export type QuoteStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'sent' | 'accepted' | 'expired';
+export type QuoteStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'sent' | 'accepted' | 'expired' | 'cancelled';
 
 export interface Product {
   id: string;
@@ -31,7 +31,7 @@ export interface Quote {
   discount_amount: number;
   tax_percent: number;
   tax_amount: number;
-  total: number;
+  total?: number;
   owner_id?: string;
   created_by?: string;
   created_at: string;
@@ -67,7 +67,7 @@ export interface QuoteItem {
   quantity: number;
   unit_price: number;
   discount_percent: number;
-  total: number;
+  total?: number;
   sort_order?: number;
   created_at?: string;
   updated_at?: string;
@@ -82,4 +82,5 @@ export const QUOTE_STATUS_COLORS: Record<QuoteStatus, string> = {
   sent: 'bg-info/15 text-info',
   accepted: 'bg-primary/15 text-primary',
   expired: 'bg-secondary text-secondary-foreground',
+  cancelled: 'bg-destructive/15 text-destructive',
 };
