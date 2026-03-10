@@ -1,4 +1,4 @@
-import { getErrorMessage } from "@/core/utils/errors";
+﻿import { getErrorMessage } from "@/core/utils/errors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -440,7 +440,7 @@ export function useUpdateLead() {
         entityId: id,
         tenantId,
         userId,
-        newValues: payload as unknown as Record<string, unknown>,
+        newValues: { ...payload },
       });
 
       return mapLead(data as LeadRow);
@@ -608,7 +608,7 @@ export function useUpdateAccount() {
         entityId: id,
         tenantId,
         userId,
-        newValues: payload as unknown as Record<string, unknown>,
+        newValues: { ...payload },
       });
 
       return mapAccount(data as AccountRow);
@@ -780,7 +780,7 @@ export function useUpdateContact() {
         entityId: id,
         tenantId,
         userId,
-        newValues: payload as unknown as Record<string, unknown>,
+        newValues: { ...payload },
       });
 
       return mapContact(data as ContactRow);
@@ -963,7 +963,7 @@ export function useUpdateOpportunity() {
         entityId: id,
         tenantId,
         userId,
-        newValues: payload as unknown as Record<string, unknown>,
+        newValues: { ...payload },
       });
 
       return mapOpportunity(data as OpportunityRow);
@@ -1141,7 +1141,7 @@ export function useUpdateActivity() {
         entityId: id,
         tenantId,
         userId,
-        newValues: payload as unknown as Record<string, unknown>,
+        newValues: { ...payload },
       });
 
       return mapActivity(data as ActivityRow);
@@ -1407,7 +1407,7 @@ export function useUpdateQuote() {
         entityId: id,
         tenantId,
         userId,
-        newValues: payload as unknown as Record<string, unknown>,
+        newValues: { ...payload },
       });
 
       return mapQuote(data as QuoteRow);
@@ -1436,6 +1436,7 @@ export function useCreateQuoteItem() {
       const payload: QuoteItemInsert = {
         quote_id: quoteId,
         organization_id: requiredOrganizationId,
+        tenant_id: requiredOrganizationId,
         product_id: item.product_id ?? null,
         product_name: item.product_name || "",
         description: item.description ?? null,

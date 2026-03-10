@@ -1,5 +1,5 @@
 // CPQ (Configure Price Quote) Type Definitions
-import type { Product, Quote as SharedQuote, QuoteItem } from "./shared";
+import type { Quote as SharedQuote } from "./shared";
 
 export type QuoteStatus = 'draft' | 'pending_approval' | 'approved' | 'rejected' | 'sent' | 'accepted' | 'expired' | 'cancelled';
 

@@ -59,7 +59,7 @@ const STATUS_COLORS: Record<string, string> = {
 
 export default function ERPDashboard() {
   const { user } = useAuth();
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats } = useQuery({
     queryKey: ["erp-stats", user?.id],
     enabled: !!user,
     queryFn: async () => {

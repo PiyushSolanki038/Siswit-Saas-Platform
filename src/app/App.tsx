@@ -168,23 +168,6 @@ function TenantSlugRedirect() {
   return <Navigate to="app/dashboard" replace />;
 }
 
-function RootRedirect() {
-  const { role, loading } = useAuth();
-  const { tenant, tenantLoading } = useTenant();
-
-  if (loading || tenantLoading) return <RouteLoader />;
-
-  if (isPlatformRole(role)) {
-    return <Navigate to="/platform" replace />;
-  }
-
-  if (tenant?.slug) {
-    return <Navigate to={`/${tenant.slug}/app/dashboard`} replace />;
-  }
-
-  return <Navigate to="/auth/sign-in" replace />;
-}
-
 function TenantWorkspaceDashboard() {
   const { role } = useAuth();
 

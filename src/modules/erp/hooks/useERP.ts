@@ -1,4 +1,4 @@
-import { getErrorMessage } from "@/core/utils/errors";
+﻿import { getErrorMessage } from "@/core/utils/errors";
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
@@ -305,7 +305,7 @@ export function useUpdateSupplier() {
         entityId: id,
         tenantId,
         userId,
-        newValues: payload as unknown as Record<string, unknown>,
+        newValues: { ...payload },
       });
 
       return mapSupplier(data as SupplierRow);
@@ -486,7 +486,7 @@ export function useUpdateInventoryItem() {
         entityId: id,
         tenantId,
         userId,
-        newValues: payload as unknown as Record<string, unknown>,
+        newValues: { ...payload },
       });
 
       return mapInventoryItem(data as InventoryWithProduct);
@@ -685,7 +685,7 @@ export function useUpdatePurchaseOrder() {
         entityId: id,
         tenantId,
         userId,
-        newValues: payload as unknown as Record<string, unknown>,
+        newValues: { ...payload },
       });
 
       return mapPurchaseOrder(data as PurchaseOrderWithSupplier);
@@ -760,11 +760,14 @@ export function useCreatePurchaseOrderItem() {
       description?: string;
     }) => {
       await ensurePurchaseOrderAccessible(item.purchase_order_id, scope);
+      const { organizationId: requiredOrganizationId } = requireOrganizationScope(scope);
       const quantity = item.quantity ?? 1;
       const unitCost = item.unit_cost ?? 0;
 
       const payload: PurchaseOrderItemInsert = {
         purchase_order_id: item.purchase_order_id,
+        organization_id: requiredOrganizationId,
+        tenant_id: requiredOrganizationId,
         product_id: item.inventory_item_id ?? null,
         product_name: item.item_name,
         description: item.description ?? null,
@@ -946,7 +949,7 @@ export function useUpdateProductionOrder() {
         entityId: id,
         tenantId,
         userId,
-        newValues: payload as unknown as Record<string, unknown>,
+        newValues: { ...payload },
       });
 
       return mapProductionOrder(data as ProductionOrderWithProduct);
@@ -1104,7 +1107,7 @@ export function useUpdateFinancialRecord() {
         entityId: id,
         tenantId,
         userId,
-        newValues: payload as unknown as Record<string, unknown>,
+        newValues: { ...payload },
       });
 
       return mapFinancialRecord(data as FinancialRecordRow);

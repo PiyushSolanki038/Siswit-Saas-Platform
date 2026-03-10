@@ -1,5 +1,5 @@
 import { useState } from "react";
-import { FileText, Plus, Search, Eye, Edit, Trash2, Send, CheckCircle, XCircle, Clock, ArrowRight } from "lucide-react";
+import { FileText, Plus, Search, Eye, Edit, Trash2, Send, CheckCircle, XCircle, Clock } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/ui/shadcn/card";
 import { Button } from "@/ui/shadcn/button";
@@ -8,10 +8,9 @@ import { Badge } from "@/ui/shadcn/badge";
 import { useQuotes, useUpdateQuoteStatus, useDeleteQuote } from "@/modules/cpq/hooks/useCPQ";
 import { Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
-import { toast } from "sonner";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui/shadcn/table";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/ui/shadcn/dropdown-menu";
-import type { Quote } from "@/core/types/cpq";
+import type { QuoteStatus } from "@/core/types/cpq";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: LucideIcon }> = {
   draft: { label: "Draft", color: "bg-muted text-muted-foreground", icon: Clock },
@@ -50,7 +49,7 @@ export default function QuotesListPage() {
     }
   };
 
-  const handleStatusChange = (id: string, newStatus: string) => {
+  const handleStatusChange = (id: string, newStatus: QuoteStatus) => {
     updateStatusMutation.mutate({ id, status: newStatus });
   };
 

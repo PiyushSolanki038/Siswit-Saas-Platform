@@ -21,7 +21,6 @@ import {
   SelectTrigger,
   SelectValue,
 } from "@/ui/shadcn/select";
-import { toast } from "sonner";
 import type { Product } from "@/core/types/cpq";
 
 const categories = [

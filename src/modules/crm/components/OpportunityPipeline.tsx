@@ -1,5 +1,5 @@
 import { useMemo } from "react";
-import { Card, CardContent, CardHeader, CardTitle } from "@/ui/shadcn/card";
+import { Card, CardContent } from "@/ui/shadcn/card";
 import { Badge } from "@/ui/shadcn/badge";
 import { cn } from "@/core/utils/utils";
 import type { Opportunity, OpportunityStage } from "@/core/types/crm";

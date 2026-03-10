@@ -3,9 +3,10 @@ import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { toast } from "sonner";
 
 import { supabase } from "@/core/api/client";
+import type { Database } from "@/core/api/types";
 import { useModuleScope } from "@/core/hooks/useModuleScope";
 import type { Contract, ContractScan, ContractTemplate, ESignature } from "@/core/types/clm";
-import { canReadAllTenantRows } from "@/core/types/roles";
+import { canReadAllTenantRows, isOwnerScopedRole } from "@/core/types/roles";
 import {
   applyModuleMutationScope,
   applyModuleReadScope,
@@ -17,37 +18,39 @@ import { softDeleteRecord } from "@/core/utils/soft-delete";
 import { safeWriteAuditLog } from "@/core/utils/audit";
 import { enqueueContractExpiryAlert, enqueueEmailSendJob, enqueueReminderJob, safeEnqueueJob } from "@/core/utils/jobs";
 
-type ContractStatus =
-  | "draft"
-  | "pending_review"
-  | "pending_approval"
-  | "approved"
-  | "sent"
-  | "signed"
-  | "expired"
-  | "cancelled";
+type ContractTemplateInsert = Database["public"]["Tables"]["contract_templates"]["Insert"] & {
+  is_active?: boolean | null;
+  is_public?: boolean | null;
+};
+type ContractInsert = Database["public"]["Tables"]["contracts"]["Insert"] & {
+  opportunity_id?: string | null;
+  contact_id?: string | null;
+};
+type ContractScanInsert = Database["public"]["Tables"]["contract_scans"]["Insert"] & {
+  file_path?: string | null;
+  content_type?: string | null;
+  file_size?: number | null;
+  ocr_text?: string | null;
+  scan_date?: string | null;
+  created_by?: string | null;
+};
+type ContractESignatureRow = Database["public"]["Tables"]["contract_esignatures"]["Row"];
 
-interface ESignatureRow {
-  id: string;
-  contract_id: string;
-  signer_email: string;
-  signer_name: string;
-  status: string | null;
-  signed_at: string | null;
-  created_at: string | null;
-}
-
-
-function mapESignature(row: ESignatureRow): ESignature {
+function mapESignature(
+  row: Pick<
+    ContractESignatureRow,
+    "id" | "contract_id" | "signer_email" | "signer_name" | "status" | "signed_at" | "created_at" | "updated_at"
+  >,
+): ESignature {
   return {
     id: row.id,
     contract_id: row.contract_id,
-    recipient_email: row.signer_email,
-    recipient_name: row.signer_name,
+    recipient_email: row.signer_email ?? "",
+    recipient_name: row.signer_name ?? "",
     status: (row.status ?? "pending") as ESignature["status"],
     signed_at: row.signed_at ?? undefined,
     created_at: row.created_at ?? new Date().toISOString(),
-    updated_at: row.created_at ?? new Date().toISOString(),
+    updated_at: row.updated_at ?? row.created_at ?? new Date().toISOString(),
   };
 }
 
@@ -95,7 +98,7 @@ export function useCreateContractTemplate() {
 
   return useMutation({
     mutationFn: async (template: Omit<Partial<ContractTemplate>, "id" | "created_at" | "updated_at">) => {
-      const payload = buildModuleCreatePayload(
+      const payload = buildModuleCreatePayload<ContractTemplateInsert>(
         {
           name: template.name || "",
           type: template.type || "",
@@ -105,7 +108,7 @@ export function useCreateContractTemplate() {
         },
         scope,
         { ownerColumn: "created_by", createdByColumn: "created_by" },
-      ) as any;
+      );
 
       const { data, error } = await supabase.from("contract_templates").insert(payload).select().single();
       if (error) throw error;
@@ -261,7 +264,7 @@ export function useCreateContract() {
 
   return useMutation({
     mutationFn: async (contract: Omit<Partial<Contract>, "id" | "created_at" | "updated_at">) => {
-      const payload = buildModuleCreatePayload(
+      const payload = buildModuleCreatePayload<ContractInsert>(
         {
           name: contract.name || "",
           contract_number: contract.contract_number || `CTR-${Date.now()}`,
@@ -277,7 +280,8 @@ export function useCreateContract() {
           value: contract.value,
         },
         scope,
-      ) as any;
+        { createdByColumn: "created_by" },
+      );
 
       const { data, error } = await supabase.from("contracts").insert(payload).select().single();
       if (error) throw error;
@@ -423,17 +427,21 @@ export function useESignatures(contractId: string) {
     queryKey: ["esignatures", contractId, tenantId, userId],
     enabled: enabled && Boolean(contractId),
     queryFn: async () => {
-      await ensureContractAccessible(contractId, scope);
-
-      const { data, error } = await supabase
+      const { organizationId: requiredOrganizationId, userId: requiredUserId } = requireOrganizationScope(scope);
+      let query = supabase
         .from("contract_esignatures")
-        .select("id, contract_id, signer_email, signer_name, status, signed_at, created_at, updated_at")
+        .select("id, contract_id, signer_email, signer_name, status, signed_at, created_at, updated_at, contract:contracts!inner(id, organization_id, owner_id)")
         .eq("contract_id", contractId)
-        .is("deleted_at", null)
-        .order("created_at", { ascending: false });
+        .eq("contract.organization_id", requiredOrganizationId);
+
+      if (!canReadAllTenantRows(scope.role) && isOwnerScopedRole(scope.role)) {
+        query = query.eq("contract.owner_id", requiredUserId);
+      }
+
+      const { data, error } = await query.order("created_at", { ascending: false });
 
       if (error) throw error;
-      return (data ?? []).map((item) => mapESignature(item as unknown as ESignatureRow));
+      return (data ?? []).map((item) => mapESignature(item));
     },
   });
 }
@@ -491,7 +499,7 @@ export function useCreateESignature() {
         newValues: data,
       });
 
-      return mapESignature(data as unknown as ESignatureRow);
+      return mapESignature(data);
     },
     onSuccess: (_, variables) => {
       queryClient.invalidateQueries({ queryKey: ["esignatures", variables.contract_id] });
@@ -545,7 +553,7 @@ export function useUpdateESignature() {
         newValues: payload,
       });
 
-      return mapESignature(data as unknown as ESignatureRow);
+      return mapESignature(data);
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["esignatures"] });
@@ -588,15 +596,20 @@ export function useCreateContractScan() {
     mutationFn: async (scan: Omit<Partial<ContractScan>, "id" | "created_at" | "updated_at">) => {
       const contractId = scan.contract_id || "";
       await ensureContractAccessible(contractId, scope);
+      const { organizationId: requiredOrganizationId } = requireOrganizationScope(scope);
 
-      const payload = buildModuleCreatePayload(
+      const payload = buildModuleCreatePayload<ContractScanInsert>(
         {
+          organization_id: requiredOrganizationId,
+          tenant_id: requiredOrganizationId,
           contract_id: contractId,
-          file_path: scan.file_path,
-          file_name: scan.file_name,
-          content_type: scan.content_type,
-          file_size: scan.file_size,
-          ocr_text: scan.ocr_text,
+          file_path: scan.file_path ?? null,
+          file_url: scan.file_path ?? null,
+          file_name: scan.file_name ?? null,
+          content_type: scan.content_type ?? null,
+          file_size: scan.file_size ?? null,
+          ocr_text: scan.ocr_text ?? null,
+          extracted_text: scan.ocr_text ?? null,
           scan_date: scan.scan_date || new Date().toISOString(),
         },
         scope,

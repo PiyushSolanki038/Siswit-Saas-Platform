@@ -3,8 +3,7 @@ import { Footer } from "@/workspaces/website/components/layout/Footer";
 import { Button } from "@/ui/shadcn/button";
 import { Link } from "react-router-dom";
 import { 
-  Target, Eye, Heart, Award, Users, Globe, 
-  ArrowRight, Shield, Zap, Sparkles
+  Target, Eye, Heart, ArrowRight, Shield, Sparkles
 } from "lucide-react";
 import aboutCollaboration from "@/assets/about-collaboration.png";
 
@@ -180,7 +179,7 @@ const About = () => {
                 {/* Timeline line */}
                 <div className="absolute left-8 top-0 bottom-0 w-0.5 bg-border" />
 
-                {milestones.map((milestone, index) => (
+                {milestones.map((milestone) => (
                   <div key={milestone.year} className="relative pl-20 pb-12 last:pb-0">
                     {/* Dot */}
                     <div className="absolute left-6 top-1 w-5 h-5 rounded-full bg-primary border-4 border-background" />

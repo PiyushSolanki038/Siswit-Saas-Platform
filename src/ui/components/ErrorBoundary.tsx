@@ -21,7 +21,7 @@ export class ErrorBoundary extends Component<Props, State> {
         return { hasError: true, error };
     }
 
-    public componentDidCatch(error: Error, errorInfo: ErrorInfo) {
+    public componentDidCatch(_error: Error, _errorInfo: ErrorInfo) {
         // Uncaught runtime error tracking
     }
 

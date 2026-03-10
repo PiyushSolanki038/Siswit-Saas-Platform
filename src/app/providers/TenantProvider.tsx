@@ -85,7 +85,7 @@ export function TenantProvider({ children }: { children: ReactNode }) {
   }, [orgMemberships]);
 
   const hasModule = useCallback(
-    (module: ModuleType): boolean => orgHasModule(module as string),
+    (module: ModuleType): boolean => orgHasModule(module),
     [orgHasModule],
   );
 

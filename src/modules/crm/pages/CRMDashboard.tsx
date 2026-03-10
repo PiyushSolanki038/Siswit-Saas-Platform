@@ -8,8 +8,8 @@ import { BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, ResponsiveContaine
 const COLORS = ["hsl(250, 85%, 60%)", "hsl(199, 89%, 48%)", "hsl(45, 93%, 47%)", "hsl(25, 95%, 53%)", "hsl(142, 71%, 45%)", "hsl(0, 72%, 50%)"];
 
 export default function CRMDashboard() {
-  const { data: stats, isLoading: statsLoading } = useDashboardStats();
-  const { data: opportunities = [], isLoading: oppsLoading } = useOpportunities();
+  const { data: stats } = useDashboardStats();
+  const { data: opportunities = [] } = useOpportunities();
 
   const formatCurrency = (value: number) => {
     return new Intl.NumberFormat("en-US", {

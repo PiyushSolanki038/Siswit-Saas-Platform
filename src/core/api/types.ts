@@ -316,10 +316,17 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           document_type: string | null
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          format: string | null
+          generated_from: string | null
           id: string
           name: string
           organization_id: string | null
           owner_id: string | null
+          related_entity_id: string | null
+          related_entity_type: string | null
           status: string | null
           template_id: string | null
           tenant_id: string | null
@@ -331,10 +338,17 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           document_type?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          format?: string | null
+          generated_from?: string | null
           id?: string
           name: string
           organization_id?: string | null
           owner_id?: string | null
+          related_entity_id?: string | null
+          related_entity_type?: string | null
           status?: string | null
           template_id?: string | null
           tenant_id?: string | null
@@ -346,10 +360,17 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           document_type?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          format?: string | null
+          generated_from?: string | null
           id?: string
           name?: string
           organization_id?: string | null
           owner_id?: string | null
+          related_entity_id?: string | null
+          related_entity_type?: string | null
           status?: string | null
           template_id?: string | null
           tenant_id?: string | null
@@ -646,13 +667,13 @@ export type Database = {
           created_at: string | null
           id: string
           ip_address: string | null
-          organization_id: string | null
+          organization_id: string
           signed_at: string | null
           signer_email: string | null
           signer_name: string | null
           signer_role: string | null
           status: string | null
-          tenant_id: string | null
+          tenant_id: string
           updated_at: string | null
           viewed_at: string | null
         }
@@ -661,13 +682,13 @@ export type Database = {
           created_at?: string | null
           id?: string
           ip_address?: string | null
-          organization_id?: string | null
+          organization_id: string
           signed_at?: string | null
           signer_email?: string | null
           signer_name?: string | null
           signer_role?: string | null
           status?: string | null
-          tenant_id?: string | null
+          tenant_id: string
           updated_at?: string | null
           viewed_at?: string | null
         }
@@ -676,13 +697,13 @@ export type Database = {
           created_at?: string | null
           id?: string
           ip_address?: string | null
-          organization_id?: string | null
+          organization_id?: string
           signed_at?: string | null
           signer_email?: string | null
           signer_name?: string | null
           signer_role?: string | null
           status?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
           updated_at?: string | null
           viewed_at?: string | null
         }
@@ -726,36 +747,54 @@ export type Database = {
       }
       contract_scans: {
         Row: {
+          content_type: string | null
           contract_id: string | null
           created_at: string | null
+          created_by: string | null
           extracted_text: string | null
           file_name: string | null
+          file_path: string | null
+          file_size: number | null
           file_url: string | null
           id: string
-          organization_id: string | null
-          tenant_id: string | null
+          ocr_text: string | null
+          organization_id: string
+          scan_date: string | null
+          tenant_id: string
           updated_at: string | null
         }
         Insert: {
+          content_type?: string | null
           contract_id?: string | null
           created_at?: string | null
+          created_by?: string | null
           extracted_text?: string | null
           file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
           file_url?: string | null
           id?: string
-          organization_id?: string | null
-          tenant_id?: string | null
+          ocr_text?: string | null
+          organization_id: string
+          scan_date?: string | null
+          tenant_id: string
           updated_at?: string | null
         }
         Update: {
+          content_type?: string | null
           contract_id?: string | null
           created_at?: string | null
+          created_by?: string | null
           extracted_text?: string | null
           file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
           file_url?: string | null
           id?: string
-          organization_id?: string | null
-          tenant_id?: string | null
+          ocr_text?: string | null
+          organization_id?: string
+          scan_date?: string | null
+          tenant_id?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -803,6 +842,8 @@ export type Database = {
           created_by: string | null
           description: string | null
           id: string
+          is_active: boolean | null
+          is_public: boolean
           name: string
           organization_id: string | null
           status: string | null
@@ -816,6 +857,8 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          is_active?: boolean | null
+          is_public?: boolean
           name: string
           organization_id?: string | null
           status?: string | null
@@ -829,6 +872,8 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          is_active?: boolean | null
+          is_public?: boolean
           name?: string
           organization_id?: string | null
           status?: string | null
@@ -875,8 +920,8 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           id: string
-          organization_id: string | null
-          tenant_id: string | null
+          organization_id: string
+          tenant_id: string
           version_number: number
         }
         Insert: {
@@ -886,8 +931,8 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           id?: string
-          organization_id?: string | null
-          tenant_id?: string | null
+          organization_id: string
+          tenant_id: string
           version_number: number
         }
         Update: {
@@ -897,8 +942,8 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           id?: string
-          organization_id?: string | null
-          tenant_id?: string | null
+          organization_id?: string
+          tenant_id?: string
           version_number?: number
         }
         Relationships: [
@@ -943,6 +988,7 @@ export type Database = {
         Row: {
           account_id: string | null
           auto_renew: boolean | null
+          contact_id: string | null
           content: string | null
           contract_number: string | null
           created_at: string | null
@@ -952,6 +998,7 @@ export type Database = {
           end_date: string | null
           id: string
           name: string
+          opportunity_id: string | null
           organization_id: string | null
           owner_id: string | null
           quote_id: string | null
@@ -966,6 +1013,7 @@ export type Database = {
         Insert: {
           account_id?: string | null
           auto_renew?: boolean | null
+          contact_id?: string | null
           content?: string | null
           contract_number?: string | null
           created_at?: string | null
@@ -975,6 +1023,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           name: string
+          opportunity_id?: string | null
           organization_id?: string | null
           owner_id?: string | null
           quote_id?: string | null
@@ -989,6 +1038,7 @@ export type Database = {
         Update: {
           account_id?: string | null
           auto_renew?: boolean | null
+          contact_id?: string | null
           content?: string | null
           contract_number?: string | null
           created_at?: string | null
@@ -998,6 +1048,7 @@ export type Database = {
           end_date?: string | null
           id?: string
           name?: string
+          opportunity_id?: string | null
           organization_id?: string | null
           owner_id?: string | null
           quote_id?: string | null
@@ -1015,6 +1066,20 @@ export type Database = {
             columns: ["account_id"]
             isOneToOne: false
             referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "contracts_opportunity_id_fkey"
+            columns: ["opportunity_id"]
+            isOneToOne: false
+            referencedRelation: "opportunities"
             referencedColumns: ["id"]
           },
           {
@@ -1064,50 +1129,59 @@ export type Database = {
       document_esignatures: {
         Row: {
           created_at: string | null
+          created_by: string | null
           document_id: string | null
+          expires_at: string | null
           id: string
           last_reminder_at: string | null
-          organization_id: string | null
+          organization_id: string
           recipient_email: string | null
           recipient_name: string | null
           reminder_count: number | null
+          sent_at: string | null
           signed_at: string | null
           signer_email: string | null
           signer_name: string | null
           status: string | null
-          tenant_id: string | null
+          tenant_id: string
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
+          created_by?: string | null
           document_id?: string | null
+          expires_at?: string | null
           id?: string
           last_reminder_at?: string | null
-          organization_id?: string | null
+          organization_id: string
           recipient_email?: string | null
           recipient_name?: string | null
           reminder_count?: number | null
+          sent_at?: string | null
           signed_at?: string | null
           signer_email?: string | null
           signer_name?: string | null
           status?: string | null
-          tenant_id?: string | null
+          tenant_id: string
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
+          created_by?: string | null
           document_id?: string | null
+          expires_at?: string | null
           id?: string
           last_reminder_at?: string | null
-          organization_id?: string | null
+          organization_id?: string
           recipient_email?: string | null
           recipient_name?: string | null
           reminder_count?: number | null
+          sent_at?: string | null
           signed_at?: string | null
           signer_email?: string | null
           signer_name?: string | null
           status?: string | null
-          tenant_id?: string | null
+          tenant_id?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -1154,9 +1228,10 @@ export type Database = {
           created_at: string | null
           document_id: string | null
           id: string
-          organization_id: string | null
+          organization_id: string
           permission_type: string | null
-          tenant_id: string | null
+          shared_by: string | null
+          tenant_id: string
           updated_at: string | null
           user_id: string | null
         }
@@ -1165,9 +1240,10 @@ export type Database = {
           created_at?: string | null
           document_id?: string | null
           id?: string
-          organization_id?: string | null
+          organization_id: string
           permission_type?: string | null
-          tenant_id?: string | null
+          shared_by?: string | null
+          tenant_id: string
           updated_at?: string | null
           user_id?: string | null
         }
@@ -1176,9 +1252,10 @@ export type Database = {
           created_at?: string | null
           document_id?: string | null
           id?: string
-          organization_id?: string | null
+          organization_id?: string
           permission_type?: string | null
-          tenant_id?: string | null
+          shared_by?: string | null
+          tenant_id?: string
           updated_at?: string | null
           user_id?: string | null
         }
@@ -1275,12 +1352,14 @@ export type Database = {
           created_by: string | null
           description: string | null
           id: string
+          is_active: boolean | null
           is_public: boolean | null
           name: string
           organization_id: string | null
           tenant_id: string | null
           type: string | null
           updated_at: string | null
+          variables: Json | null
         }
         Insert: {
           category?: string | null
@@ -1289,12 +1368,14 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          is_active?: boolean | null
           is_public?: boolean | null
           name: string
           organization_id?: string | null
           tenant_id?: string | null
           type?: string | null
           updated_at?: string | null
+          variables?: Json | null
         }
         Update: {
           category?: string | null
@@ -1303,12 +1384,14 @@ export type Database = {
           created_by?: string | null
           description?: string | null
           id?: string
+          is_active?: boolean | null
           is_public?: boolean | null
           name?: string
           organization_id?: string | null
           tenant_id?: string | null
           type?: string | null
           updated_at?: string | null
+          variables?: Json | null
         }
         Relationships: [
           {
@@ -1348,9 +1431,13 @@ export type Database = {
           created_at: string | null
           created_by: string | null
           document_id: string | null
+          file_name: string | null
+          file_path: string | null
+          file_size: number | null
+          format: string | null
           id: string
-          organization_id: string | null
-          tenant_id: string | null
+          organization_id: string
+          tenant_id: string
           version_number: number
         }
         Insert: {
@@ -1359,9 +1446,13 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           document_id?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          format?: string | null
           id?: string
-          organization_id?: string | null
-          tenant_id?: string | null
+          organization_id: string
+          tenant_id: string
           version_number: number
         }
         Update: {
@@ -1370,9 +1461,13 @@ export type Database = {
           created_at?: string | null
           created_by?: string | null
           document_id?: string | null
+          file_name?: string | null
+          file_path?: string | null
+          file_size?: number | null
+          format?: string | null
           id?: string
-          organization_id?: string | null
-          tenant_id?: string | null
+          organization_id?: string
+          tenant_id?: string
           version_number?: number
         }
         Relationships: [
@@ -2339,34 +2434,34 @@ export type Database = {
         Row: {
           created_at: string | null
           id: string
-          organization_id: string | null
+          organization_id: string
           product_id: string | null
           production_order_id: string | null
           quantity_consumed: number | null
           quantity_required: number | null
-          tenant_id: string | null
+          tenant_id: string
           updated_at: string | null
         }
         Insert: {
           created_at?: string | null
           id?: string
-          organization_id?: string | null
+          organization_id: string
           product_id?: string | null
           production_order_id?: string | null
           quantity_consumed?: number | null
           quantity_required?: number | null
-          tenant_id?: string | null
+          tenant_id: string
           updated_at?: string | null
         }
         Update: {
           created_at?: string | null
           id?: string
-          organization_id?: string | null
+          organization_id?: string
           product_id?: string | null
           production_order_id?: string | null
           quantity_consumed?: number | null
           quantity_required?: number | null
-          tenant_id?: string | null
+          tenant_id?: string
           updated_at?: string | null
         }
         Relationships: [
@@ -2655,13 +2750,13 @@ export type Database = {
           description: string | null
           id: string
           line_total: number | null
-          organization_id: string | null
+          organization_id: string
           product_id: string | null
           product_name: string | null
           purchase_order_id: string | null
           quantity: number | null
           quantity_ordered: number | null
-          tenant_id: string | null
+          tenant_id: string
           total_price: number | null
           unit_cost: number | null
           unit_price: number | null
@@ -2674,13 +2769,13 @@ export type Database = {
           description?: string | null
           id?: string
           line_total?: number | null
-          organization_id?: string | null
+          organization_id: string
           product_id?: string | null
           product_name?: string | null
           purchase_order_id?: string | null
           quantity?: number | null
           quantity_ordered?: number | null
-          tenant_id?: string | null
+          tenant_id: string
           total_price?: number | null
           unit_cost?: number | null
           unit_price?: number | null
@@ -2693,13 +2788,13 @@ export type Database = {
           description?: string | null
           id?: string
           line_total?: number | null
-          organization_id?: string | null
+          organization_id?: string
           product_id?: string | null
           product_name?: string | null
           purchase_order_id?: string | null
           quantity?: number | null
           quantity_ordered?: number | null
-          tenant_id?: string | null
+          tenant_id?: string
           total_price?: number | null
           unit_cost?: number | null
           unit_price?: number | null
@@ -2881,7 +2976,7 @@ export type Database = {
           quote_id: string
           sort_order: number | null
           tax_percent: number | null
-          tenant_id: string | null
+          tenant_id: string
           total: number | null
           unit_price: number | null
           updated_at: string | null
@@ -2901,7 +2996,7 @@ export type Database = {
           quote_id: string
           sort_order?: number | null
           tax_percent?: number | null
-          tenant_id?: string | null
+          tenant_id: string
           total?: number | null
           unit_price?: number | null
           updated_at?: string | null
@@ -2921,7 +3016,7 @@ export type Database = {
           quote_id?: string
           sort_order?: number | null
           tax_percent?: number | null
-          tenant_id?: string | null
+          tenant_id?: string
           total?: number | null
           unit_price?: number | null
           updated_at?: string | null

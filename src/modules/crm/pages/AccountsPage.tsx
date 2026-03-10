@@ -134,14 +134,17 @@ export default function AccountsPage() {
 
   // submit handler
   const handleSubmit = async () => {
+    const annualRevenue = formData.annual_revenue
+      ? parseFloat(formData.annual_revenue)
+      : undefined;
+    const employeeCount = formData.employee_count
+      ? parseInt(formData.employee_count)
+      : undefined;
+
     const payload = {
       ...formData,
-      annual_revenue: formData.annual_revenue
-        ? parseFloat(formData.annual_revenue)
-        : null,
-      employee_count: formData.employee_count
-        ? parseInt(formData.employee_count)
-        : null,
+      annual_revenue: annualRevenue,
+      employee_count: employeeCount,
     };
 
     if (editingAccount) {

@@ -62,7 +62,7 @@ export default function QuoteDetailPage() {
   // Calculation Logic for UI Consistency
   const grossAmount = quoteItems?.reduce((sum, item) => sum + (item.quantity * item.unit_price), 0) || 0;
   const totalItemDiscounts = quoteItems?.reduce((sum, item) => {
-    return sum + (item.quantity * item.unit_price * (item.discount_percent / 100));
+    return sum + (item.quantity * item.unit_price * ((item.discount_percent ?? 0) / 100));
   }, 0) || 0;
 
   const statusConfig = STATUS_CONFIG[quote.status] || STATUS_CONFIG.draft;
@@ -174,7 +174,7 @@ export default function QuoteDetailPage() {
                       </TableCell>
                       <TableCell className="text-right">{item.quantity}</TableCell>
                       <TableCell className="text-right">{formatCurrency(item.unit_price)}</TableCell>
-                      <TableCell className="text-right text-destructive">-{item.discount_percent}%</TableCell>
+                      <TableCell className="text-right text-destructive">-{item.discount_percent ?? 0}%</TableCell>
                       <TableCell className="text-right font-medium">{formatCurrency(item.total || 0)}</TableCell>
                     </TableRow>
                   ))}

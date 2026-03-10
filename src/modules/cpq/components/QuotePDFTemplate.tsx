@@ -23,7 +23,7 @@ export const QuotePDFTemplate = React.forwardRef<
   );
   const totalItemDiscounts = items.reduce(
     (sum, item) =>
-      sum + item.quantity * item.unit_price * (item.discount_percent / 100),
+      sum + item.quantity * item.unit_price * ((item.discount_percent ?? 0) / 100),
     0,
   );
 
@@ -179,7 +179,7 @@ export const QuotePDFTemplate = React.forwardRef<
             )}
             <div className="flex justify-between text-sm text-foreground mb-1">
               <span>Subtotal</span>
-              <span>{formatCurrency(quote.subtotal)}</span>
+              <span>{formatCurrency(quote.subtotal ?? 0)}</span>
             </div>
             <div className="flex justify-between text-sm text-destructive mb-1">
               <span>Extra Discount</span>

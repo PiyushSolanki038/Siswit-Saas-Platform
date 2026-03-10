@@ -77,7 +77,7 @@ export default function QuoteBuilderPage() {
     if (isEditMode && existingItems && !isLoadingItems) {
       setItems(existingItems.map(item => ({
         id: item.id,
-        product_id: item.product_id,
+        product_id: item.product_id ?? "",
         product_name: item.product_name,
         description: item.description,
         quantity: item.quantity,

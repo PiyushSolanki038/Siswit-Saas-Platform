@@ -1,5 +1,3 @@
-import { PostgrestFilterBuilder } from "@supabase/postgrest-js";
-
 export interface OwnershipContext {
   organizationId?: string | null;
   // Compatibility alias while migrating callers.
@@ -12,29 +10,30 @@ function getContextOrganizationId(context: OwnershipContext): string | null {
   return context.organizationId ?? context.tenantId ?? null;
 }
 
+interface EqScopedQuery<TQuery> {
+  eq: (column: string, value: string) => TQuery;
+}
+
 /**
  * Core ownership rule:
  * - Platform admins may access all organizations.
  * - Non-platform users must be organization-scoped.
  * - Mutations should stamp organization_id/tenant_id and created_by/owner_id where applicable.
  */
-export function applyOrganizationOwnershipScope<T>(
-  query: PostgrestFilterBuilder<Record<string, unknown>, T, unknown>,
+export function applyOrganizationOwnershipScope<TQuery extends EqScopedQuery<TQuery>>(
+  query: TQuery,
   context: OwnershipContext,
-) {
+): TQuery {
   if (context.isPlatformAdmin) return query;
   const organizationId = getContextOrganizationId(context);
   if (!organizationId) return query;
-  const scopedQuery = query as unknown as {
-    eq: (column: string, value: string) => PostgrestFilterBuilder<Record<string, unknown>, T, unknown>;
-  };
-  return scopedQuery.eq("organization_id", organizationId);
+  return query.eq("organization_id", organizationId);
 }
 
-export function applyTenantOwnershipScope<T>(
-  query: PostgrestFilterBuilder<Record<string, unknown>, T, unknown>,
+export function applyTenantOwnershipScope<TQuery extends EqScopedQuery<TQuery>>(
+  query: TQuery,
   context: OwnershipContext,
-) {
+): TQuery {
   return applyOrganizationOwnershipScope(query, context);
 }
 

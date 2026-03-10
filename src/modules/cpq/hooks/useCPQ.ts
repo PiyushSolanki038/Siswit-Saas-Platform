@@ -12,13 +12,13 @@ import {
   applyModuleReadScope,
   buildModuleCreatePayload,
   requireOrganizationScope,
-  type ModuleScopeContext,
 } from "@/core/utils/module-scope";
 import { softDeleteRecord } from "@/core/utils/soft-delete";
 import { safeWriteAuditLog } from "@/core/utils/audit";
 
 type ProductInsert = Database["public"]["Tables"]["products"]["Insert"];
 type QuoteInsert = Database["public"]["Tables"]["quotes"]["Insert"];
+type QuoteLineItemInsert = Database["public"]["Tables"]["quote_line_items"]["Insert"];
 
 
 // ===== QUOTE STATUS VALIDATION =====
@@ -69,15 +69,6 @@ function calculateQuoteTotals(
     taxAmount,
     totalAmount,
   };
-}
-
-async function ensureQuoteAccessible(quoteId: string, scope: ModuleScopeContext) {
-  const query = supabase.from("quotes").select("id").eq("id", quoteId);
-  const scoped = applyModuleReadScope(query, scope, { ownerColumns: ["owner_id"], hasSoftDelete: false });
-  const result = await scoped.maybeSingle();
-  if (result.error || !result.data) {
-    throw new Error("Quote not found or not accessible");
-  }
 }
 
 // ===== PRODUCTS =====
@@ -343,7 +334,7 @@ export function useCreateQuote() {
 
       if (items && items.length > 0) {
         const { organizationId: requiredOrganizationId } = requireOrganizationScope(scope);
-        const itemPayload = items.map((item, index) => ({
+        const itemPayload: QuoteLineItemInsert[] = items.map((item, index) => ({
           quote_id: data.id,
           organization_id: requiredOrganizationId,
           tenant_id: requiredOrganizationId,
@@ -355,7 +346,7 @@ export function useCreateQuote() {
           discount_percent: item.discount_percent,
           total: calculateQuoteItemTotal(item),
           sort_order: index,
-        })) as any;
+        }));
 
         const itemsResult = await supabase.from("quote_line_items").insert(itemPayload);
         if (itemsResult.error) throw itemsResult.error;
@@ -408,6 +399,9 @@ export function useUpdateQuote() {
       const payload: Record<string, unknown> = {
         updated_at: new Date().toISOString(),
       };
+      const shouldRecomputeTotals =
+        updates.discount_percent !== undefined ||
+        updates.tax_percent !== undefined;
 
       if (updates.status !== undefined) payload.status = updates.status;
       if (updates.valid_until !== undefined) payload.expiration_date = updates.valid_until;
@@ -416,60 +410,8 @@ export function useUpdateQuote() {
       if (updates.account_id !== undefined) payload.account_id = updates.account_id;
       if (updates.contact_id !== undefined) payload.contact_id = updates.contact_id;
       if (updates.opportunity_id !== undefined) payload.opportunity_id = updates.opportunity_id;
-
-      // If quote-level discount_percent or tax_percent is being updated,
-      // or if totals are being directly manipulated, fetch current line items and recompute
-      const isTotalsUpdate =
-        updates.discount_percent !== undefined ||
-        updates.tax_percent !== undefined ||
-        updates.subtotal !== undefined ||
-        updates.discount_amount !== undefined ||
-        updates.tax_amount !== undefined ||
-        updates.total !== undefined;
-
-      if (isTotalsUpdate) {
-        // Fetch current quote values to preserve existing ones
-        const { data: existingQuote, error: quoteError } = await applyModuleReadScope(
-          supabase.from("quotes").select("discount_percent, tax_percent").eq("id", id),
-          scope,
-          { ownerColumns: ["owner_id"], hasSoftDelete: false },
-        ).single();
-
-        if (quoteError || !existingQuote) throw quoteError || new Error("Quote not found");
-
-        // Fetch current line items to recompute totals
-        const { organizationId: requiredOrganizationId } = requireOrganizationScope(scope);
-        const { data: currentItems, error: itemsError } = await supabase
-          .from("quote_line_items")
-          .select("quantity, unit_price, discount_percent")
-          .eq("quote_id", id)
-          .eq("organization_id", requiredOrganizationId);
-
-        if (itemsError) throw itemsError;
-
-        const items: Partial<QuoteItem>[] = (currentItems ?? []).map((item) => ({
-          quantity: item.quantity ?? 0,
-          unit_price: item.unit_price ?? 0,
-          discount_percent: item.discount_percent ?? 0,
-        }));
-
-        // Use existing quote values if not provided in updates
-        const discountPercent = Number(
-          updates.discount_percent ?? existingQuote.discount_percent ?? 0
-        );
-        const taxPercent = Number(
-          updates.tax_percent ?? existingQuote.tax_percent ?? 0
-        );
-
-        const computed = calculateQuoteTotals(items, discountPercent, taxPercent);
-
-        payload.subtotal = computed.subtotal;
-        payload.discount_percent = discountPercent;
-        payload.discount_amount = computed.discountAmount;
-        payload.tax_percent = taxPercent;
-        payload.tax_amount = computed.taxAmount;
-        payload.total_amount = computed.totalAmount;
-      }
+      if (updates.discount_percent !== undefined) payload.discount_percent = updates.discount_percent;
+      if (updates.tax_percent !== undefined) payload.tax_percent = updates.tax_percent;
 
       const scopedQuery = applyModuleMutationScope(
         supabase.from("quotes").update(payload).eq("id", id),
@@ -479,6 +421,11 @@ export function useUpdateQuote() {
 
       const { data, error } = await scopedQuery.select().single();
       if (error) throw error;
+
+      if (shouldRecomputeTotals) {
+        const { error: recomputeError } = await supabase.rpc("recompute_quote_totals", { p_quote_id: id });
+        if (recomputeError) throw recomputeError;
+      }
 
       void safeWriteAuditLog({
         action: "quote_update",
@@ -513,8 +460,14 @@ export function useDeleteQuote() {
   return useMutation({
     mutationFn: async (id: string) => {
       const { organizationId: requiredOrganizationId } = requireOrganizationScope(scope);
-
-      await ensureQuoteAccessible(id, scope);
+      const quoteAccessResult = await applyModuleReadScope(
+        supabase.from("quotes").select("id").eq("id", id),
+        scope,
+        { ownerColumns: ["owner_id"], hasSoftDelete: false },
+      ).maybeSingle();
+      if (quoteAccessResult.error || !quoteAccessResult.data) {
+        throw new Error("Quote not found or not accessible");
+      }
 
       const { error: childError } = await supabase
         .from("quote_line_items")
@@ -588,7 +541,14 @@ export function useCreateQuoteItem() {
   return useMutation({
     mutationFn: async (item: Omit<Partial<QuoteItem>, "id" | "created_at" | "updated_at">) => {
       const quoteId = item.quote_id || "";
-      await ensureQuoteAccessible(quoteId, scope);
+      const quoteAccessResult = await applyModuleReadScope(
+        supabase.from("quotes").select("id").eq("id", quoteId),
+        scope,
+        { ownerColumns: ["owner_id"], hasSoftDelete: false },
+      ).maybeSingle();
+      if (quoteAccessResult.error || !quoteAccessResult.data) {
+        throw new Error("Quote not found or not accessible");
+      }
 
       const { organizationId: requiredOrganizationId } = requireOrganizationScope(scope);
       const { data, error } = await supabase
@@ -596,6 +556,7 @@ export function useCreateQuoteItem() {
         .insert({
           quote_id: quoteId,
           organization_id: requiredOrganizationId,
+          tenant_id: requiredOrganizationId,
           product_id: item.product_id || null,
           product_name: item.product_name || "",
           description: item.description,
@@ -639,7 +600,23 @@ export function useUpdateQuoteItem() {
 
   return useMutation({
     mutationFn: async ({ id, quoteId, ...updates }: Partial<QuoteItem> & { id: string; quoteId: string }) => {
-      await ensureQuoteAccessible(quoteId, scope);
+      const { organizationId: requiredOrganizationId, userId: requiredUserId } = requireOrganizationScope(scope);
+      let currentItemQuery = supabase
+        .from("quote_line_items")
+        .select("id, quantity, unit_price, discount_percent, quote:quotes!inner(id, organization_id, owner_id)")
+        .eq("id", id)
+        .eq("quote_id", quoteId)
+        .eq("organization_id", requiredOrganizationId)
+        .eq("quote.organization_id", requiredOrganizationId);
+
+      if (!canReadAllTenantRows(scope.role) && isOwnerScopedRole(scope.role)) {
+        currentItemQuery = currentItemQuery.eq("quote.owner_id", requiredUserId);
+      }
+
+      const { data: currentItem, error: currentItemError } = await currentItemQuery.single();
+      if (currentItemError || !currentItem) {
+        throw currentItemError || new Error("Quote item not found or not accessible");
+      }
 
       const payload: Record<string, unknown> = {};
       if (updates.product_id !== undefined) payload.product_id = updates.product_id;
@@ -655,19 +632,6 @@ export function useUpdateQuoteItem() {
         updates.unit_price !== undefined ||
         updates.discount_percent !== undefined
       ) {
-        // Fetch current item to get any unchanged values with proper scope protection
-        const { organizationId: requiredOrganizationId } = requireOrganizationScope(scope);
-        const { data: currentItem, error: currentItemError } = await supabase
-          .from("quote_line_items")
-          .select("quantity, unit_price, discount_percent")
-          .eq("id", id)
-          .eq("organization_id", requiredOrganizationId)
-          .single();
-
-        if (currentItemError || !currentItem) {
-          throw currentItemError || new Error("Quote item not found");
-        }
-
         const mergedItem = {
           quantity: updates.quantity ?? currentItem.quantity ?? 0,
           unit_price: updates.unit_price ?? currentItem.unit_price ?? 0,
@@ -679,7 +643,6 @@ export function useUpdateQuoteItem() {
 
       if (updates.sort_order !== undefined) payload.sort_order = updates.sort_order;
 
-      const { organizationId: requiredOrganizationId } = requireOrganizationScope(scope);
       const { data, error } = await supabase
         .from("quote_line_items")
         .update(payload)
@@ -719,9 +682,24 @@ export function useDeleteQuoteItem() {
 
   return useMutation({
     mutationFn: async ({ id, quoteId }: { id: string; quoteId: string }) => {
-      await ensureQuoteAccessible(quoteId, scope);
+      const { organizationId: requiredOrganizationId, userId: requiredUserId } = requireOrganizationScope(scope);
+      let accessQuery = supabase
+        .from("quote_line_items")
+        .select("id, quote:quotes!inner(id, organization_id, owner_id)")
+        .eq("id", id)
+        .eq("quote_id", quoteId)
+        .eq("organization_id", requiredOrganizationId)
+        .eq("quote.organization_id", requiredOrganizationId);
 
-      const { organizationId: requiredOrganizationId } = requireOrganizationScope(scope);
+      if (!canReadAllTenantRows(scope.role) && isOwnerScopedRole(scope.role)) {
+        accessQuery = accessQuery.eq("quote.owner_id", requiredUserId);
+      }
+
+      const { data: accessibleItem, error: accessError } = await accessQuery.maybeSingle();
+      if (accessError || !accessibleItem) {
+        throw accessError || new Error("Quote item not found or not accessible");
+      }
+
       const { error: deleteError } = await supabase
         .from("quote_line_items")
         .delete()

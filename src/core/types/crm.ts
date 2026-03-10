@@ -1,6 +1,6 @@
 // CRM Type Definitions
 import type { TenantScoped } from "./base";
-import type { Product, Quote as SharedQuote, QuoteItem } from "./shared";
+import type { Quote as SharedQuote } from "./shared";
 
 export type LeadStatus = 'new' | 'contacted' | 'qualified' | 'unqualified' | 'converted';
 export type LeadSource = 'website' | 'referral' | 'cold_call' | 'advertisement' | 'social_media' | 'trade_show' | 'other';

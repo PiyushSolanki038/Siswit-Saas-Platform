@@ -1,4 +1,5 @@
-import { supabase } from "@/core/api/client";
+import { typedFrom } from "@/core/api/typed-client";
+import type { Database, Json } from "@/core/api/types";
 import { getErrorMessage } from "@/core/utils/errors";
 import { logger } from "@/core/utils/logger";
 
@@ -30,32 +31,23 @@ function resolveOrganizationId(input: { organizationId?: string; tenantId?: stri
 }
 
 export async function enqueueJob(input: EnqueueJobInput): Promise<string | null> {
-  const unsafeSupabase = supabase as unknown as {
-    from: (table: string) => {
-      insert: (payload: unknown) => {
-        select: (columns: string) => {
-          single: () => Promise<{ data: { id?: string } | null; error: { message?: string } | null }>;
-        };
-      };
-    };
-  };
   const organizationId = resolveOrganizationId(input);
+  const payload: Database["public"]["Tables"]["background_jobs"]["Insert"] = {
+    organization_id: organizationId,
+    tenant_id: organizationId,
+    job_type: input.jobType,
+    payload: input.payload as Json,
+    status: "queued",
+    priority: input.priority ?? 100,
+    available_at: input.availableAt ?? new Date().toISOString(),
+    max_attempts: input.maxAttempts ?? 5,
+    created_by: input.createdBy ?? null,
+    created_at: new Date().toISOString(),
+    updated_at: new Date().toISOString(),
+  };
 
-  const { data, error } = await unsafeSupabase
-    .from("background_jobs")
-    .insert({
-      organization_id: organizationId,
-      tenant_id: organizationId,
-      job_type: input.jobType,
-      payload: input.payload,
-      status: "queued",
-      priority: input.priority ?? 100,
-      available_at: input.availableAt ?? new Date().toISOString(),
-      max_attempts: input.maxAttempts ?? 5,
-      created_by: input.createdBy ?? null,
-      created_at: new Date().toISOString(),
-      updated_at: new Date().toISOString(),
-    })
+  const { data, error } = await typedFrom("background_jobs")
+    .insert(payload)
     .select("id")
     .single();
 

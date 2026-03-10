@@ -127,7 +127,7 @@ export default function ActivitiesPage() {
   const handleSubmit = async () => {
     const payload = {
       ...formData,
-      due_date: formData.due_date || null,
+      due_date: formData.due_date || undefined,
     };
 
     if (editingActivity) {
@@ -214,7 +214,9 @@ export default function ActivitiesPage() {
               <span>{format(date, "MMM d, yyyy")}</span>
             </div>
           );
-        } catch (e) { return "-"; }
+        } catch {
+          return "-";
+        }
       },
     },
     {

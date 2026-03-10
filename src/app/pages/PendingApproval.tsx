@@ -1,6 +1,6 @@
 import { Link, useNavigate } from "react-router-dom";
 import { Button } from "@/ui/shadcn/button";
-import { Clock, LogOut, Mail, Home, ArrowLeft } from "lucide-react";
+import { Clock, LogOut, Mail, Home } from "lucide-react";
 import { useAuth } from "@/core/auth/useAuth";
 
 const PendingApproval = () => {

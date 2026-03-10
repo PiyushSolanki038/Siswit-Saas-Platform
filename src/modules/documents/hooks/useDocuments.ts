@@ -1,5 +1,6 @@
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { supabase } from "@/core/api/client";
+import type { Database } from "@/core/api/types";
 import { useAuth } from "@/core/auth/useAuth";
 import { useOrganization } from "@/workspaces/organization/hooks/useOrganization";
 import type {
@@ -13,12 +14,38 @@ import { toast } from "sonner";
 import { enqueueDocumentPdfJob, enqueueEmailSendJob, enqueueReminderJob, safeEnqueueJob } from "@/core/utils/jobs";
 import { softDeleteRecord } from "@/core/utils/soft-delete";
 import { safeWriteAuditLog } from "@/core/utils/audit";
-import { applyTenantOwnershipScope, withOwnershipCreate } from "@/core/utils/data-ownership";
-import { applyModuleReadScope, type ModuleScopeContext } from "@/core/utils/module-scope";
+import { applyModuleReadScope, buildModuleCreatePayload, type ModuleScopeContext } from "@/core/utils/module-scope";
 import { isPlatformRole } from "@/core/types/roles";
 
 type DocumentESignatureWithDocument = DocumentESignature & {
   document?: Pick<AutoDocument, "id" | "name" | "type" | "status" | "created_at" | "updated_at"> | null;
+};
+type DocumentTemplateInsert = Database["public"]["Tables"]["document_templates"]["Insert"] & {
+  variables?: Record<string, unknown> | null;
+  is_active?: boolean | null;
+};
+type AutoDocumentInsert = Database["public"]["Tables"]["auto_documents"]["Insert"] & {
+  related_entity_type?: string | null;
+  related_entity_id?: string | null;
+  file_path?: string | null;
+  file_name?: string | null;
+  format?: string | null;
+  file_size?: number | null;
+  generated_from?: string | null;
+};
+type DocumentESignatureInsert = Database["public"]["Tables"]["document_esignatures"]["Insert"] & {
+  expires_at?: string | null;
+  sent_at?: string | null;
+  created_by?: string | null;
+};
+type DocumentVersionInsert = Database["public"]["Tables"]["document_versions"]["Insert"] & {
+  file_path?: string | null;
+  file_name?: string | null;
+  format?: string | null;
+  file_size?: number | null;
+};
+type DocumentPermissionInsert = Database["public"]["Tables"]["document_permissions"]["Insert"] & {
+  shared_by?: string | null;
 };
 
 function isMissingTableError(error: unknown): boolean {
@@ -32,7 +59,8 @@ async function syncAutoDocumentStatusFromSignatures(documentId: string, organiza
   const { data, error } = await supabase
     .from("document_esignatures")
     .select("status")
-    .eq("document_id", documentId);
+    .eq("document_id", documentId)
+    .eq("organization_id", organizationId);
 
   if (error || !data) {
     if (error && !isMissingTableError(error)) {
@@ -75,6 +103,11 @@ async function syncAutoDocumentStatusFromSignatures(documentId: string, organiza
 export function useDocumentTemplates() {
   const { user, role } = useAuth();
   const { organization } = useOrganization();
+  const scope: ModuleScopeContext = {
+    organizationId: organization?.id ?? null,
+    userId: user?.id ?? null,
+    role,
+  };
 
   return useQuery({
     queryKey: ["document_templates", user?.id, organization?.id],
@@ -85,17 +118,15 @@ export function useDocumentTemplates() {
         throw new Error("User not authenticated");
       }
 
-      let query = supabase
-        .from("document_templates")
-        .select("*")
-        .is("deleted_at", null)
+      const scopedQuery = applyModuleReadScope(
+        supabase.from("document_templates").select("*"),
+        scope,
+        { ownerColumns: [], hasSoftDelete: false },
+      );
+
+      const query = scopedQuery
         .or(`created_by.eq.${user.id},is_public.eq.true`)
         .order("updated_at", { ascending: false });
-
-      query = applyTenantOwnershipScope(query, {
-        organizationId: organization?.id,
-        isPlatformAdmin: isPlatformRole(role),
-      });
 
       const { data, error } = await query;
 
@@ -113,12 +144,17 @@ export function useDocumentTemplates() {
 
 export function useCreateDocumentTemplate() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { organization } = useOrganization();
+  const scope: ModuleScopeContext = {
+    organizationId: organization?.id ?? null,
+    userId: user?.id ?? null,
+    role,
+  };
 
   return useMutation({
     mutationFn: async (template: Omit<Partial<DocumentTemplate>, "id" | "created_at" | "updated_at">) => {
-      const payload = withOwnershipCreate(
+      const payload = buildModuleCreatePayload<DocumentTemplateInsert>(
         {
           name: template.name || "",
           type: template.type || "other",
@@ -127,13 +163,9 @@ export function useCreateDocumentTemplate() {
           variables: template.variables || {},
           is_active: template.is_active ?? true,
           is_public: template.is_public ?? false,
-          created_by: user?.id,
         },
-        {
-          organizationId: organization?.id,
-          userId: user?.id,
-          isPlatformAdmin: false,
-        },
+        scope,
+        { ownerColumn: "created_by", createdByColumn: "created_by" },
       );
 
       const { data, error } = await supabase
@@ -285,6 +317,11 @@ export function useAutoDocuments() {
 export function useAutoDocument(id: string) {
   const { user, role } = useAuth();
   const { organization } = useOrganization();
+  const scope: ModuleScopeContext = {
+    organizationId: organization?.id ?? null,
+    userId: user?.id ?? null,
+    role,
+  };
 
   return useQuery({
     queryKey: ["auto_document", id, user?.id, organization?.id],
@@ -294,22 +331,13 @@ export function useAutoDocument(id: string) {
         throw new Error("User not authenticated");
       }
 
-      let query = supabase
-        .from("auto_documents")
-        .select("*")
-        .eq("id", id)
-        .is("deleted_at", null);
+      const scopedQuery = applyModuleReadScope(
+        supabase.from("auto_documents").select("*").eq("id", id),
+        scope,
+        { ownerColumns: ["owner_id", "created_by"], hasSoftDelete: false },
+      );
 
-      query = applyTenantOwnershipScope(query, {
-        organizationId: organization?.id,
-        isPlatformAdmin: isPlatformRole(role),
-      });
-
-      if (!isPlatformRole(role)) {
-        query = query.or(`owner_id.eq.${user.id},created_by.eq.${user.id}`);
-      }
-
-      const { data, error } = await query.single();
+      const { data, error } = await scopedQuery.single();
 
       if (error) {
         throw error;
@@ -322,8 +350,13 @@ export function useAutoDocument(id: string) {
 
 export function useCreateAutoDocument() {
   const queryClient = useQueryClient();
-  const { user } = useAuth();
+  const { user, role } = useAuth();
   const { organization } = useOrganization();
+  const scope: ModuleScopeContext = {
+    organizationId: organization?.id ?? null,
+    userId: user?.id ?? null,
+    role,
+  };
 
   return useMutation({
     mutationFn: async (doc: Omit<Partial<AutoDocument>, "id" | "created_at" | "updated_at">) => {
@@ -331,7 +364,7 @@ export function useCreateAutoDocument() {
         throw new Error("Organization context is required");
       }
 
-      const payload = withOwnershipCreate(
+      const payload = buildModuleCreatePayload<AutoDocumentInsert>(
         {
           name: doc.name || "",
           type: doc.type || "other",
@@ -345,14 +378,9 @@ export function useCreateAutoDocument() {
           format: doc.format,
           file_size: doc.file_size,
           generated_from: doc.generated_from || "template",
-          owner_id: user?.id,
-          created_by: user?.id,
         },
-        {
-          organizationId: organization.id,
-          userId: user?.id,
-          isPlatformAdmin: false,
-        },
+        scope,
+        { ownerColumn: "owner_id", createdByColumn: "created_by" },
       );
 
       const { data, error } = await supabase
@@ -540,20 +568,26 @@ export function useCreateDocumentESignature() {
         resolvedOrganizationId = (documentRef as { organization_id?: string } | null)?.organization_id ?? null;
       }
 
+      if (!resolvedOrganizationId) {
+        throw new Error("Organization context is required");
+      }
+
+      const payload: DocumentESignatureInsert = {
+        document_id: signature.document_id,
+        organization_id: resolvedOrganizationId,
+        tenant_id: resolvedOrganizationId,
+        recipient_name: signature.recipient_name || "",
+        recipient_email: signature.recipient_email || "",
+        status: signature.status || "pending",
+        expires_at: signature.expires_at || null,
+        sent_at: new Date().toISOString(),
+        reminder_count: 0,
+        created_by: user?.id ?? null,
+      };
+
       const { data, error } = await supabase
         .from("document_esignatures")
-        .insert({
-          document_id: signature.document_id,
-          organization_id: resolvedOrganizationId,
-          tenant_id: resolvedOrganizationId,
-          recipient_name: signature.recipient_name || "",
-          recipient_email: signature.recipient_email || "",
-          status: signature.status || "pending",
-          expires_at: signature.expires_at || null,
-          sent_at: new Date().toISOString(),
-          reminder_count: 0,
-          created_by: user?.id,
-        })
+        .insert(payload)
         .select()
         .single();
 
@@ -805,22 +839,31 @@ export function useDocumentVersions(documentId: string) {
 export function useCreateDocumentVersion() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
+  const { organization } = useOrganization();
 
   return useMutation({
     mutationFn: async (version: Omit<Partial<DocumentVersion>, "id" | "created_at">) => {
+      if (!organization?.id) {
+        throw new Error("Organization context is required");
+      }
+
+      const payload: DocumentVersionInsert = {
+        document_id: version.document_id || "",
+        organization_id: organization.id,
+        tenant_id: organization.id,
+        version_number: version.version_number || 1,
+        content: version.content ?? null,
+        file_path: version.file_path ?? null,
+        file_name: version.file_name ?? null,
+        format: version.format ?? null,
+        file_size: version.file_size ?? null,
+        change_summary: version.change_summary ?? null,
+        created_by: user?.id ?? null,
+      };
+
       const { data, error } = await supabase
         .from("document_versions")
-        .insert({
-          document_id: version.document_id || "",
-          version_number: version.version_number || 1,
-          content: version.content,
-          file_path: version.file_path,
-          file_name: version.file_name,
-          format: version.format,
-          file_size: version.file_size,
-          change_summary: version.change_summary,
-          created_by: user?.id,
-        })
+        .insert(payload)
         .select()
         .single();
 
@@ -877,27 +920,34 @@ export function useShareDocument() {
 
   return useMutation({
     mutationFn: async (permission: Omit<Partial<DocumentPermission>, "id" | "created_at">) => {
+      if (!organization?.id) {
+        throw new Error("Organization context is required");
+      }
+
       // S-07: Verify the user's org has access to the document before sharing
       const { data: doc } = await supabase
         .from("auto_documents")
         .select("id")
         .eq("id", permission.document_id || "")
-        .eq("organization_id", organization?.id ?? "")
+        .eq("organization_id", organization.id)
         .maybeSingle();
 
       if (!doc) {
         throw new Error("Document not found or not accessible");
       }
 
+      const payload: DocumentPermissionInsert = {
+        document_id: permission.document_id || "",
+        user_id: permission.user_id || "",
+        permission_type: permission.permission_type || "view",
+        shared_by: user?.id ?? null,
+        organization_id: organization.id,
+        tenant_id: organization.id,
+      };
+
       const { data, error } = await supabase
         .from("document_permissions")
-        .insert({
-          document_id: permission.document_id || "",
-          user_id: permission.user_id || "",
-          permission_type: permission.permission_type || "view",
-          shared_by: user?.id,
-          organization_id: organization?.id,
-        })
+        .insert(payload)
         .select()
         .single();
 
