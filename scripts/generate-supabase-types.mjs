@@ -61,3 +61,7 @@ main().catch((error) => {
   console.error(`Failed to generate Supabase types: ${message}`);
   process.exitCode = 1;
 });
+
+
+//use this command to generate types
+// $env:SUPABASE_PROJECT_ID="swzepbbpbeoqbiavidfh"; npm run db:types
