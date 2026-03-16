@@ -1,5 +1,8 @@
+/// <reference path="../_shared/edge-runtime.d.ts" />
+
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
-import { corsHeaders } from "../_shared/resend.ts";
+import { buildInvitationEmail } from "../_shared/invitation-email.ts";
+import { corsHeaders, sendResendEmail } from "../_shared/resend.ts";
 
 interface EmployeeInvitePayload {
   recipientEmail: string;
@@ -9,7 +12,7 @@ interface EmployeeInvitePayload {
   roleLabel: string;
   inviterName?: string;
   expiresAt: string;
-  invitationUrl?: string;
+  invitationUrl: string;
   authRedirectTo?: string;
 }
 
@@ -20,23 +23,7 @@ function jsonResponse(status: number, body: Record<string, unknown>): Response {
   });
 }
 
-function resolveRedirectTo(payload: EmployeeInvitePayload): string | undefined {
-  const direct = payload.authRedirectTo?.trim();
-  if (direct) return direct;
-
-  if (payload.invitationUrl) {
-    try {
-      const url = new URL(payload.invitationUrl);
-      return `${url.origin}/auth/sign-in`;
-    } catch {
-      return undefined;
-    }
-  }
-
-  return undefined;
-}
-
-Deno.serve(async (req) => {
+Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
     return new Response(null, { headers: corsHeaders });
   }
@@ -74,9 +61,17 @@ Deno.serve(async (req) => {
       !payload.organizationId ||
       !payload.organizationName ||
       !payload.organizationCode ||
-      !payload.roleLabel
+      !payload.roleLabel ||
+      !payload.invitationUrl?.trim()
     ) {
       return jsonResponse(400, { error: "Invalid payload" });
+    }
+
+    let invitationUrl: string;
+    try {
+      invitationUrl = new URL(payload.invitationUrl.trim()).toString();
+    } catch {
+      return jsonResponse(400, { error: "Invalid invitationUrl" });
     }
 
     const adminClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
@@ -117,27 +112,22 @@ Deno.serve(async (req) => {
       return jsonResponse(429, { error: "Too many invitations sent. Please try again later." });
     }
 
-    const redirectTo = resolveRedirectTo(payload);
-
-    const { error: inviteError } = await adminClient.auth.admin.inviteUserByEmail(payload.recipientEmail.trim(), {
-      redirectTo,
-      data: {
-        signup_type: "employee_invitation",
-        organization_id: payload.organizationId,
-        organization_name: payload.organizationName,
-        organization_code: payload.organizationCode,
-        invited_role: payload.roleLabel,
-        inviter_name: payload.inviterName ?? user.email ?? "Organization Admin",
-        invitation_expires_at: payload.expiresAt,
-      },
+    const emailContent = buildInvitationEmail({
+      inviteType: "employee",
+      organizationName: payload.organizationName,
+      invitationUrl,
+      expiresAt: payload.expiresAt,
+      inviterName: payload.inviterName ?? user.email ?? "Organization Admin",
+      roleLabel: payload.roleLabel,
     });
 
-    if (inviteError) {
-      const status = typeof inviteError.status === "number" ? inviteError.status : 500;
-      return jsonResponse(status, { error: inviteError.message });
-    }
+    await sendResendEmail({
+      to: payload.recipientEmail.trim(),
+      subject: emailContent.subject,
+      html: emailContent.html,
+    });
 
-    return jsonResponse(200, { ok: true, provider: "supabase_auth" });
+    return jsonResponse(200, { ok: true, provider: "resend" });
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
     return jsonResponse(500, { error: message });

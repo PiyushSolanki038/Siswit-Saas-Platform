@@ -18,7 +18,7 @@ const features = [
     subtitle: "Contract Management",
     description: "Manage lifecycle from creation to renewal with smart templates and compliance.",
     highlights: ["Contract Creation", "E-Signatures", "Compliance Tracking", "Renewals"],
-    color: "from-accent to-accent/60",
+    color: "from-info to-primary/80 dark:from-accent dark:to-accent/60",
   },
   {
     icon: Users,

@@ -9,6 +9,7 @@
     "build:dev": "vite build --mode development",
     "lint": "eslint .",
     "preview": "vite preview",
+    "auth:cleanup-precreated-invite-users": "node scripts/cleanup-precreated-invite-users.mjs",
     "db:types": "node scripts/generate-supabase-types.mjs",
     "jobs:worker": "node scripts/background-worker.mjs",
     "jobs:enqueue-expiry-alerts": "node scripts/enqueue-contract-expiry-alerts.mjs"

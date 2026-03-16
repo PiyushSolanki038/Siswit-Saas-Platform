@@ -1,3 +1,5 @@
+/// <reference path="./edge-runtime.d.ts" />
+
 // S-11: Support multiple CORS origins from environment variable
 const ALLOWED_ORIGINS = (Deno.env.get("ALLOWED_ORIGINS") ?? Deno.env.get("ALLOWED_ORIGIN") ?? "https://app.siswitinfra.com")
   .split(",")

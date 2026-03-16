@@ -3,7 +3,7 @@ import { Calculator, FileText, Users, Database, Zap } from "lucide-react";
 export const HeroAnimation = () => {
     const nodes = [
         { id: 'cpq', label: 'CPQ', icon: Calculator, color: 'hsl(var(--primary))', angle: 0 },
-        { id: 'clm', label: 'CLM', icon: FileText, color: 'hsl(var(--accent))', angle: 90 },
+        { id: 'clm', label: 'CLM', icon: FileText, color: 'hsl(200, 100%, 50%)', angle: 90 },
         { id: 'erp', label: 'ERP', icon: Database, color: 'hsl(210, 100%, 50%)', angle: 180 },
         { id: 'crm', label: 'CRM', icon: Users, color: 'hsl(280, 100%, 60%)', angle: 270 },
     ];
@@ -39,7 +39,6 @@ export const HeroAnimation = () => {
 
             {/* Central Intelligence Core */}
             <div className="relative z-20 group">
-                <div className="absolute inset-0 bg-primary/20 rounded-full blur-[80px] animate-pulse group-hover:bg-primary/40 transition-colors duration-500" />
                 <div className="relative w-32 h-32 flex items-center justify-center">
                     {/* Spinning Rings */}
                     <div className="absolute inset-0 border-2 border-primary/30 border-dashed rounded-full animate-spin-slow" />
