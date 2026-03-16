@@ -2,7 +2,7 @@
 
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 import { buildInvitationEmail } from "../_shared/invitation-email.ts";
-import { corsHeaders, sendResendEmail } from "../_shared/resend.ts";
+import { getCorsHeaders, sendEmail } from "../_shared/email.ts";
 
 interface EmployeeInvitePayload {
   recipientEmail: string;
@@ -16,29 +16,30 @@ interface EmployeeInvitePayload {
   authRedirectTo?: string;
 }
 
-function jsonResponse(status: number, body: Record<string, unknown>): Response {
+function jsonResponse(status: number, body: Record<string, unknown>, req?: Request): Response {
   return new Response(JSON.stringify(body), {
     status,
-    headers: { ...corsHeaders, "Content-Type": "application/json" },
+    headers: { ...getCorsHeaders(req), "Content-Type": "application/json" },
   });
 }
 
 Deno.serve(async (req: Request) => {
   if (req.method === "OPTIONS") {
-    return new Response(null, { headers: corsHeaders });
+    return new Response(null, { headers: getCorsHeaders(req) });
   }
 
   try {
     const supabaseUrl = Deno.env.get("SUPABASE_URL");
     const supabaseAnonKey = Deno.env.get("SUPABASE_ANON_KEY");
     const supabaseServiceRoleKey = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY");
+
     if (!supabaseUrl || !supabaseAnonKey || !supabaseServiceRoleKey) {
       throw new Error("Missing Supabase env vars");
     }
 
     const authHeader = req.headers.get("Authorization");
     if (!authHeader) {
-      return jsonResponse(401, { error: "Missing authorization" });
+      return jsonResponse(401, { error: "Missing authorization" }, req);
     }
 
     const requesterClient = createClient(supabaseUrl, supabaseAnonKey, {
@@ -51,7 +52,7 @@ Deno.serve(async (req: Request) => {
     } = await requesterClient.auth.getUser();
 
     if (userError || !user) {
-      return jsonResponse(401, { error: "Unauthorized" });
+      return jsonResponse(401, { error: "Unauthorized" }, req);
     }
 
     const payload = (await req.json()) as EmployeeInvitePayload;
@@ -64,14 +65,14 @@ Deno.serve(async (req: Request) => {
       !payload.roleLabel ||
       !payload.invitationUrl?.trim()
     ) {
-      return jsonResponse(400, { error: "Invalid payload" });
+      return jsonResponse(400, { error: "Invalid payload" }, req);
     }
 
     let invitationUrl: string;
     try {
       invitationUrl = new URL(payload.invitationUrl.trim()).toString();
     } catch {
-      return jsonResponse(400, { error: "Invalid invitationUrl" });
+      return jsonResponse(400, { error: "Invalid invitationUrl" }, req);
     }
 
     const adminClient = createClient(supabaseUrl, supabaseServiceRoleKey, {
@@ -89,11 +90,11 @@ Deno.serve(async (req: Request) => {
       .maybeSingle();
 
     if (inviterMembershipError) {
-      return jsonResponse(500, { error: inviterMembershipError.message });
+      return jsonResponse(500, { error: inviterMembershipError.message }, req);
     }
 
     if (!inviterMembership) {
-      return jsonResponse(403, { error: "Only organization owner/admin can send invitations." });
+      return jsonResponse(403, { error: "Only organization owner/admin can send invitations." }, req);
     }
 
     // Rate limit: max 50 employee invitations per org per hour
@@ -105,11 +106,11 @@ Deno.serve(async (req: Request) => {
       .gte("created_at", oneHourAgo);
 
     if (rateLimitError) {
-      return jsonResponse(500, { error: rateLimitError.message });
+      return jsonResponse(500, { error: rateLimitError.message }, req);
     }
 
     if ((count ?? 0) >= 50) {
-      return jsonResponse(429, { error: "Too many invitations sent. Please try again later." });
+      return jsonResponse(429, { error: "Too many invitations sent. Please try again later." }, req);
     }
 
     const emailContent = buildInvitationEmail({
@@ -121,15 +122,15 @@ Deno.serve(async (req: Request) => {
       roleLabel: payload.roleLabel,
     });
 
-    await sendResendEmail({
+    await sendEmail({
       to: payload.recipientEmail.trim(),
       subject: emailContent.subject,
       html: emailContent.html,
     });
 
-    return jsonResponse(200, { ok: true, provider: "resend" });
+    return jsonResponse(200, { ok: true, provider: "smtp" }, req);
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error);
-    return jsonResponse(500, { error: message });
+    return jsonResponse(500, { error: message }, req);
   }
 });
