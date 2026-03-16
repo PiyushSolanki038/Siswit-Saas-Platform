@@ -137,9 +137,43 @@ function buildInviteToken(): string {
   return `${randomA[0].toString(16)}${randomA[1].toString(16)}${randomB[0].toString(16)}${randomB[1].toString(16)}`;
 }
 
+function normalizeOrigin(value: string | undefined): string {
+  return value?.trim().replace(/\/+$/, "") ?? "";
+}
+
+function isLocalOrigin(origin: string): boolean {
+  try {
+    const { hostname } = new URL(origin);
+    return hostname === "localhost" || hostname === "127.0.0.1";
+  } catch {
+    return origin.startsWith("http://localhost:") || origin.startsWith("http://127.0.0.1:");
+  }
+}
+
+// Use the current origin in local development, but prefer a canonical public app URL elsewhere.
+function getAuthAppOrigin(): string {
+  const configuredOrigin = normalizeOrigin(import.meta.env.VITE_PUBLIC_APP_URL);
+
+  if (typeof window === "undefined") {
+    return configuredOrigin;
+  }
+
+  const currentOrigin = window.location.origin;
+  if (isLocalOrigin(currentOrigin)) {
+    return currentOrigin;
+  }
+
+  return configuredOrigin || currentOrigin;
+}
+
+function getAuthUrl(path: string): string {
+  const origin = getAuthAppOrigin();
+  const normalizedPath = path.startsWith("/") ? path : `/${path}`;
+  return origin ? `${origin}${normalizedPath}` : normalizedPath;
+}
+
 function getAuthEmailRedirectTo(): string {
-  if (typeof window === "undefined") return "";
-  return `${window.location.origin}/auth/verify-success`;
+  return getAuthUrl("/auth/verify-success");
 }
 
 function membershipPriority(role: string): number {
@@ -627,7 +661,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .eq("id", input.organizationId)
           .maybeSingle();
 
-        const invitationUrl = `${window.location.origin}/auth/accept-invitation?token=${encodeURIComponent(token)}`;
+        const invitationUrl = getAuthUrl(`/auth/accept-invitation?token=${encodeURIComponent(token)}`);
 
         if (INVITE_EMAILS_DISABLED) {
           return { error: null, invitationUrl, emailError: null };
@@ -643,7 +677,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             inviterName: user?.email ?? "Admin",
             expiresAt: input.expiresAt,
             invitationUrl,
-            authRedirectTo: `${window.location.origin}/auth/sign-in`,
+            authRedirectTo: getAuthUrl("/auth/sign-in"),
           },
         });
 
@@ -698,7 +732,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           .eq("id", input.organizationId)
           .maybeSingle();
 
-        const invitationUrl = `${window.location.origin}/auth/accept-client-invitation?token=${encodeURIComponent(token)}`;
+        const invitationUrl = getAuthUrl(`/auth/accept-client-invitation?token=${encodeURIComponent(token)}`);
 
         if (INVITE_EMAILS_DISABLED) {
           return { error: null, invitationUrl, emailError: null };
@@ -713,7 +747,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
             inviterName: user?.email ?? "Admin",
             expiresAt: input.expiresAt,
             invitationUrl,
-            authRedirectTo: `${window.location.origin}/auth/sign-in`,
+            authRedirectTo: getAuthUrl("/auth/sign-in"),
           },
         });
 
@@ -788,7 +822,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const sendPasswordReset = useCallback(async (email: string): Promise<{ error: string | null }> => {
     try {
-      const redirectTo = `${window.location.origin}/auth/reset-password`;
+      const redirectTo = getAuthUrl("/auth/reset-password");
       const { error } = await supabase.auth.resetPasswordForEmail(email, { redirectTo });
       return { error: error?.message ?? null };
     } catch (error: unknown) {
