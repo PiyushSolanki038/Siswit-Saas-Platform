@@ -141,8 +141,8 @@ export default function OrganizationInvitationsPage() {
       {/* Page header */}
       <section className="space-y-1">
         <p className="text-[11px] font-medium tracking-widest uppercase text-muted-foreground">Organization</p>
-        <h1 className="font-serif text-4xl font-normal tracking-tight leading-tight">Invitations</h1>
-        <p className="text-sm text-muted-foreground max-w-md leading-relaxed pt-0.5">
+        <h1 className="text-4xl font-normal tracking-tight leading-tight">Invitations</h1>
+        <p className="text-sm text-muted-foreground max-w leading-relaxed pt-0.5">
           Invite team members for internal access, or onboard clients to the external portal.
         </p>
       </section>
