@@ -433,9 +433,12 @@
     justify-content: space-between;
     gap: 0.75rem;
     border-bottom: 1px solid hsl(var(--border) / 0.72);
-    background: hsl(var(--card) / 0.86);
+    background: hsl(var(--card));
     padding: 0.85rem 1rem;
-    backdrop-filter: blur(8px);
+    backdrop-filter: blur(12px);
+    flex-shrink: 0;
+    z-index: 10;
+    position: relative;
   }
 
   .org-topbar-controls {

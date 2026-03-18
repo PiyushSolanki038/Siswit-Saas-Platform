@@ -10,14 +10,14 @@ export default function OrganizationOwnerLayout() {
   const [collapsed, setCollapsed] = useState(false);
 
   return (
-    <div className="org-shell-bg min-h-screen">
-      <div className={cn("org-shell grid min-h-screen w-full overflow-hidden transition-all duration-300", collapsed ? "lg:grid-cols-[64px_1fr]" : "lg:grid-cols-[250px_1fr]")}>
+    <div className="org-shell-bg h-screen overflow-hidden">
+      <div className={cn("org-shell flex h-screen w-full transition-all duration-300")}>
         <OrganizationSidebar 
-          className="hidden lg:flex" 
+          className={cn("hidden lg:flex h-screen shrink-0 transition-all duration-300", collapsed ? "w-16" : "w-[250px]")}
           collapsed={collapsed}
           onCollapseToggle={() => setCollapsed(!collapsed)}
         />
-        <div className="flex min-w-0 flex-col bg-background/80">
+        <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background/80">
           <OrganizationTopBar onOpenSidebar={() => setSidebarOpen(true)} />
           <main className="org-main-scroll flex-1 overflow-y-auto p-4 md:p-5 lg:p-6">
             <Outlet />
