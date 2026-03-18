@@ -1,6 +1,5 @@
-import { Link, useNavigate } from "react-router-dom";
+import { useNavigate } from "react-router-dom";
 import { useAuth } from "@/core/auth/useAuth";
-import { useTenant } from "@/core/tenant/useTenant";
 import { Button } from "@/ui/shadcn/button";
 import {
   DropdownMenu,
@@ -10,12 +9,10 @@ import {
   DropdownMenuTrigger,
 } from "@/ui/shadcn/dropdown-menu";
 import { RoleBadge } from "@/ui/shadcn/RoleBadge";
-import { LogOut, User, Bell, Settings } from "lucide-react";
-import { tenantPortalPath } from "@/core/utils/routes";
+import { LogOut, User, Bell } from "lucide-react";
 
 export function CustomerHeader() {
   const { user, role, signOut } = useAuth();
-  const { tenant } = useTenant();
   const navigate = useNavigate();
 
   const handleSignOut = async () => {
@@ -53,13 +50,6 @@ export function CustomerHeader() {
                   </div>
                 )}
               </div>
-              <DropdownMenuSeparator />
-              <DropdownMenuItem asChild>
-                <Link to={tenant?.slug ? tenantPortalPath(tenant.slug, "settings") : "/"} className="flex items-center">
-                  <Settings className="mr-2 h-4 w-4" />
-                  Settings
-                </Link>
-              </DropdownMenuItem>
               <DropdownMenuSeparator />
               <DropdownMenuItem
                 onClick={handleSignOut}

@@ -1,9 +1,11 @@
 "use client";
 
-import { useEffect, useState } from "react";
-import { useNavigate } from "react-router-dom";
+import { useEffect, useMemo, useState } from "react";
+import { useNavigate, useParams } from "react-router-dom";
 import { useAuth } from "@/core/auth/useAuth";
 import { supabase } from "@/core/api/client";
+import { tenantPortalPath } from "@/core/utils/routes";
+import { usePortalScope } from "@/workspaces/portal/hooks/usePortalScope";
 import {
   FileText,
   FileSignature,
@@ -20,37 +22,43 @@ interface QuickAction {
   route: string;
 }
 
-const quickActions: QuickAction[] = [
-  {
-    icon: Quote,
-    title: "View My Quotes",
-    description: "Check status of your quotes",
-    route: "/portal/quotes",
-  },
-  {
-    icon: FileSignature,
-    title: "My Contracts",
-    description: "View active contracts",
-    route: "/portal/contracts",
-  },
-  {
-    icon: FileStack,
-    title: "My Documents",
-    description: "Access your documents",
-    route: "/portal/documents",
-  },
-  {
-    icon: FileText,
-    title: "Pending Signatures",
-    description: "Documents waiting for your signature",
-    route: "/portal/pending-signatures",
-  },
-];
-
 const PortalDashboard = () => {
   const { user, loading: authLoading } = useAuth();
+  const { tenantSlug = "" } = useParams<{ tenantSlug: string }>();
   const navigate = useNavigate();
+  const { organizationId, organizationLoading, portalEmail, userId, isReady } = usePortalScope();
   const [dataLoading, setDataLoading] = useState(true);
+
+  const quickActions: QuickAction[] = useMemo(
+    () => [
+      {
+        icon: Quote,
+        title: "View My Quotes",
+        description: "Check status of your quotes",
+        route: tenantPortalPath(tenantSlug, "quotes"),
+      },
+      {
+        icon: FileSignature,
+        title: "My Contracts",
+        description: "View active contracts",
+        route: tenantPortalPath(tenantSlug, "contracts"),
+      },
+      {
+        icon: FileStack,
+        title: "My Documents",
+        description: "Access your documents",
+        route: tenantPortalPath(tenantSlug, "documents"),
+      },
+      {
+        icon: FileText,
+        title: "Pending Signatures",
+        description: "Documents waiting for your signature",
+        route: tenantPortalPath(tenantSlug, "pending-signatures"),
+      },
+    ],
+    [tenantSlug],
+  );
+
   const [stats, setStats] = useState({
     quotes: 0,
     contracts: 0,
@@ -60,43 +68,67 @@ const PortalDashboard = () => {
 
   useEffect(() => {
     const fetchStats = async () => {
-      if (!user?.email) return;
       setDataLoading(true);
 
       try {
-        const userEmail = user.email;
-        const userId = user.id;
+        if (!organizationId || !userId) {
+          setStats({
+            quotes: 0,
+            contracts: 0,
+            documents: 0,
+            pendingSignatures: 0,
+          });
+          return;
+        }
 
-        // Fetch quotes for this user
-        const quotesRes = await supabase
-          .from("quotes")
-          .select("id", { count: "exact" })
-          .eq("customer_email", userEmail);
+        const quotesRes = portalEmail
+          ? await supabase
+              .from("quotes")
+              .select("id", { count: "exact", head: true })
+              .eq("organization_id", organizationId)
+              .eq("customer_email", portalEmail)
+          : { count: 0 };
 
-        // Fetch contracts for this user
-        const contractsRes = await supabase
-          .from("contracts")
-          .select("id", { count: "exact" })
-          .eq("customer_email", userEmail);
+        const contractsRes = portalEmail
+          ? await supabase
+              .from("contracts")
+              .select("id", { count: "exact", head: true })
+              .eq("organization_id", organizationId)
+              .eq("customer_email", portalEmail)
+          : { count: 0 };
 
-        // Fetch documents for this user
         const docsRes = await supabase
           .from("auto_documents")
-          .select("id", { count: "exact" })
+          .select("id", { count: "exact", head: true })
+          .eq("organization_id", organizationId)
           .eq("created_by", userId);
 
-        // Fetch pending signatures (using contract_esignatures table)
-        const pendingRes = await supabase
-          .from("contract_esignatures")
-          .select("id", { count: "exact" })
-          .eq("signer_email", userEmail)
-          .eq("status", "pending");
+        let pendingCount = 0;
+        if (portalEmail) {
+          const { data: userContracts } = await supabase
+            .from("contracts")
+            .select("id")
+            .eq("organization_id", organizationId)
+            .eq("customer_email", portalEmail);
+
+          const contractIds = userContracts?.map((contract) => contract.id) ?? [];
+
+          if (contractIds.length > 0) {
+            const pendingRes = await supabase
+              .from("contract_esignatures")
+              .select("id", { count: "exact", head: true })
+              .in("contract_id", contractIds)
+              .eq("signer_email", portalEmail)
+              .eq("status", "pending");
+            pendingCount = pendingRes.count ?? 0;
+          }
+        }
 
         setStats({
           quotes: quotesRes.count ?? 0,
           contracts: contractsRes.count ?? 0,
           documents: docsRes.count ?? 0,
-          pendingSignatures: pendingRes.count ?? 0,
+          pendingSignatures: pendingCount,
         });
       } catch {
         // Silently handle error fetching stats
@@ -105,12 +137,12 @@ const PortalDashboard = () => {
       }
     };
 
-    if (user) {
-      fetchStats();
+    if (!organizationLoading) {
+      void fetchStats();
     }
-  }, [user]);
+  }, [organizationId, organizationLoading, portalEmail, userId]);
 
-  if (authLoading || (dataLoading && !user)) {
+  if (authLoading || organizationLoading || dataLoading || !isReady) {
     return (
       <div className="min-h-screen flex items-center justify-center">
         <Loader2 className="animate-spin w-8 h-8 text-primary" />
@@ -128,11 +160,10 @@ const PortalDashboard = () => {
   return (
     <div className="min-h-screen bg-background">
       <main className="pt-16 space-y-8">
-        {/* HERO */}
         <section className="container mx-auto px-4 md:px-6">
           <div className="rounded-2xl p-5 md:p-8 bg-gradient-to-br from-primary/10 to-background border border-border">
             <h1 className="text-2xl md:text-3xl font-bold">
-              Welcome back, {firstName} 👋
+              Welcome back, {firstName}!
             </h1>
             <p className="text-muted-foreground mt-1 text-sm md:text-base">
               Manage your quotes, contracts, and documents all in one place.
@@ -140,7 +171,6 @@ const PortalDashboard = () => {
           </div>
         </section>
 
-        {/* STATS */}
         <section className="container mx-auto px-4 md:px-6 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 md:gap-6">
           <div className="p-4 md:p-5 rounded-xl bg-card border shadow-sm">
             <div className="flex items-center justify-between mb-2">
@@ -191,7 +221,6 @@ const PortalDashboard = () => {
           </div>
         </section>
 
-        {/* QUICK ACTIONS */}
         <section className="container mx-auto px-4 md:px-6">
           <h2 className="text-lg md:text-xl font-semibold mb-4">Quick Actions</h2>
           <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">

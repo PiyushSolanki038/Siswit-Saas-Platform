@@ -11,7 +11,6 @@ import {
   LayoutDashboard,
   Quote,
   Send,
-  Settings,
 } from "lucide-react";
 import { cn } from "@/core/utils/utils";
 import { Button } from "@/ui/shadcn/button";
@@ -38,7 +37,7 @@ const buildMenuItems = (tenantSlug: string) => [
     title: "Documents",
     items: [
       { title: "All Documents", icon: FileStack, path: tenantPortalPath(tenantSlug, "documents") },
-      { title: "Create Document", icon: FilePlus, path: tenantPortalPath(tenantSlug, "document-create") },
+      // { title: "Create Document", icon: FilePlus, path: tenantPortalPath(tenantSlug, "document-create") },
       { title: "History", icon: History, path: tenantPortalPath(tenantSlug, "document-history") },
     ],
   },
@@ -136,27 +135,6 @@ export function CustomerSidebar() {
           </div>
         ))}
       </nav>
-
-      <div className="border-t border-border p-2">
-        <NavLink
-          to={tenantPortalPath(tenantSlug, "settings")}
-          end
-          className={({ isActive }) =>
-            cn(
-              linkBase,
-              collapsed ? "justify-center px-2" : "gap-3 px-4",
-              isActive
-                ? "bg-primary text-primary-foreground"
-                : "text-muted-foreground hover:text-foreground hover:bg-muted",
-            )
-          }
-        >
-          <div className="h-4 w-4 flex items-center justify-center flex-shrink-0">
-            <Settings className="h-4 w-4" />
-          </div>
-          {!collapsed && <span className="text-sm">Settings</span>}
-        </NavLink>
-      </div>
     </aside>
   );
 }

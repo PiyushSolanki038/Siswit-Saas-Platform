@@ -46,6 +46,7 @@ export interface OrganizationMembership {
   id: string;
   organization_id: string;
   user_id: string;
+  email?: string | null;
   role: string;
   department?: string | null;
   account_state: string;

@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
 import { FileStack, Search, Eye, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/ui/shadcn/card";
 import { Button } from "@/ui/shadcn/button";
 import { Input } from "@/ui/shadcn/input";
 import { Badge } from "@/ui/shadcn/badge";
 import { supabase } from "@/core/api/client";
-import { useAuth } from "@/core/auth/useAuth";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui/shadcn/table";
+import { usePortalScope } from "@/workspaces/portal/hooks/usePortalScope";
 
 interface CustomerDocument {
   id: string;
@@ -19,20 +19,26 @@ interface CustomerDocument {
 }
 
 export default function CustomerDocumentsPage() {
-  const { user } = useAuth();
+  const { organizationId, organizationLoading, userId, isReady } = usePortalScope();
   const [searchQuery, setSearchQuery] = useState("");
   const [documents, setDocuments] = useState<CustomerDocument[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchDocuments = async () => {
-      if (!user?.id) return;
-
       setIsLoading(true);
+
+      if (!organizationId || !userId) {
+        setDocuments([]);
+        setIsLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("auto_documents")
         .select("*")
-        .eq("created_by", user.id)
+        .eq("organization_id", organizationId)
+        .eq("created_by", userId)
         .order("created_at", { ascending: false });
 
       if (!error && data) {
@@ -41,8 +47,10 @@ export default function CustomerDocumentsPage() {
       setIsLoading(false);
     };
 
-    fetchDocuments();
-  }, [user?.id]);
+    if (!organizationLoading) {
+      void fetchDocuments();
+    }
+  }, [organizationId, organizationLoading, userId]);
 
   const filteredDocuments = documents?.filter((doc) => {
     const matchesSearch =
@@ -51,7 +59,7 @@ export default function CustomerDocumentsPage() {
     return matchesSearch;
   }) || [];
 
-  if (isLoading) {
+  if (organizationLoading || isLoading || !isReady) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />

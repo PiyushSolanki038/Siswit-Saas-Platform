@@ -1,14 +1,14 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { Send, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { Send, Loader2, PenTool } from "lucide-react";
 import { Card, CardContent } from "@/ui/shadcn/card";
-import { Button } from "@/ui/shadcn/button";
 import { Badge } from "@/ui/shadcn/badge";
+import { Button } from "@/ui/shadcn/button";
 import { supabase } from "@/core/api/client";
-import { useAuth } from "@/core/auth/useAuth";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui/shadcn/table";
+import { usePortalScope } from "@/workspaces/portal/hooks/usePortalScope";
 
 interface PendingSignature {
   id: string;
@@ -21,32 +21,54 @@ interface PendingSignature {
 }
 
 export default function CustomerPendingSignaturesPage() {
-  const { user } = useAuth();
+  const { organizationId, organizationLoading, portalEmail, isReady } = usePortalScope();
   const [signatures, setSignatures] = useState<PendingSignature[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchSignatures = async () => {
-      if (!user?.email) return;
-
       setIsLoading(true);
+
+      if (!organizationId || !portalEmail) {
+        setSignatures([]);
+        setIsLoading(false);
+        return;
+      }
+
+      const { data: userContracts } = await supabase
+        .from("contracts")
+        .select("id")
+        .eq("organization_id", organizationId)
+        .eq("customer_email", portalEmail);
+
+      const contractIds = userContracts?.map((contract) => contract.id) || [];
+
+      if (contractIds.length === 0) {
+        setSignatures([]);
+        setIsLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("contract_esignatures")
         .select("*, contracts:contracts(contract_number)")
-        .eq("signer_email", user.email)
+        .in("contract_id", contractIds)
+        .eq("signer_email", portalEmail)
         .eq("status", "pending")
         .order("created_at", { ascending: false });
 
       if (!error && data) {
-        setSignatures(data);
+        setSignatures(data as any);
       }
       setIsLoading(false);
     };
 
-    fetchSignatures();
-  }, [user?.email]);
+    if (!organizationLoading) {
+      void fetchSignatures();
+    }
+  }, [organizationId, organizationLoading, portalEmail]);
 
-  if (isLoading) {
+  if (organizationLoading || isLoading || !isReady) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -97,9 +119,8 @@ export default function CustomerPendingSignaturesPage() {
                     <TableCell>{sig.created_at ? new Date(sig.created_at).toLocaleDateString() : "N/A"}</TableCell>
                     <TableCell className="text-right">
                       <Button variant="ghost" size="sm" asChild>
-                        <Link to={`/portal/pending-signatures/${sig.id}`}>
-                          <PenTool className="h-4 w-4 mr-1" />
-                          Sign
+                        <Link to={sig.id}>
+                          View & Sign
                         </Link>
                       </Button>
                     </TableCell>

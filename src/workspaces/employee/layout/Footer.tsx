@@ -50,7 +50,7 @@ export function Footer() {
                 <span className="text-primary-foreground font-bold text-lg">S</span>
               </div>
               <span className="text-xl font-bold text-foreground">
-                SIT<span className="text-gradient">WIT</span>
+                SIS<span className="text-gradient">WIT</span>
               </span>
             </Link>
             <p className="text-muted-foreground text-sm mb-6 max-w-xs">
@@ -143,7 +143,7 @@ export function Footer() {
         {/* Bottom */}
         <div className="mt-12 pt-8 border-t border-border flex flex-col md:flex-row justify-between items-center gap-4">
           <p className="text-sm text-muted-foreground">
-            © {new Date().getFullYear()} SISWIT. All rights reserved.
+            &copy; {new Date().getFullYear()} SISWIT. All rights reserved.
           </p>
           <div className="flex gap-6">
             <Link to="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">

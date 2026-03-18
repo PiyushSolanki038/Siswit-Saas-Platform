@@ -1,15 +1,15 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useEffect, useState } from "react";
+import { FileSignature, Search, Loader2 } from "lucide-react";
 import { Link } from "react-router-dom";
-import { FileSignature, Search, Eye, Loader2 } from "lucide-react";
 import { Card, CardContent } from "@/ui/shadcn/card";
-import { Button } from "@/ui/shadcn/button";
 import { Input } from "@/ui/shadcn/input";
 import { Badge } from "@/ui/shadcn/badge";
+import { Button } from "@/ui/shadcn/button";
 import { supabase } from "@/core/api/client";
-import { useAuth } from "@/core/auth/useAuth";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui/shadcn/table";
+import { usePortalScope } from "@/workspaces/portal/hooks/usePortalScope";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string }> = {
   draft: { label: "Draft", color: "bg-muted text-muted-foreground" },
@@ -30,30 +30,38 @@ interface CustomerContract {
 }
 
 export default function CustomerContractsPage() {
-  const { user } = useAuth();
+  const { organizationId, organizationLoading, portalEmail, isReady } = usePortalScope();
   const [searchQuery, setSearchQuery] = useState("");
   const [contracts, setContracts] = useState<CustomerContract[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchContracts = async () => {
-      if (!user?.email) return;
-
       setIsLoading(true);
+
+      if (!organizationId || !portalEmail) {
+        setContracts([]);
+        setIsLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("contracts")
         .select("*, accounts:accounts(name)")
-        .eq("customer_email", user.email)
+        .eq("organization_id", organizationId)
+        .eq("customer_email", portalEmail)
         .order("created_at", { ascending: false });
 
       if (!error && data) {
-        setContracts(data);
+        setContracts(data as any);
       }
       setIsLoading(false);
     };
 
-    fetchContracts();
-  }, [user?.email]);
+    if (!organizationLoading) {
+      void fetchContracts();
+    }
+  }, [organizationId, organizationLoading, portalEmail]);
 
   const filteredContracts = contracts?.filter((contract) => {
     const matchesSearch =
@@ -62,7 +70,7 @@ export default function CustomerContractsPage() {
     return matchesSearch;
   }) || [];
 
-  if (isLoading) {
+  if (organizationLoading || isLoading || !isReady) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -130,8 +138,7 @@ export default function CustomerContractsPage() {
                       <TableCell>{contract.end_date ? new Date(contract.end_date).toLocaleDateString() : "N/A"}</TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="sm" asChild>
-                          <Link to={`/portal/contracts/${contract.id}`}>
-                            <Eye className="h-4 w-4 mr-1" />
+                          <Link to={contract.id}>
                             View
                           </Link>
                         </Button>

@@ -908,15 +908,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
         // C-02 fix: Block login if email is not yet verified
         if (access.role === ("pending_verification" as AuthRole)) {
-          // Use Edge Function to sync verification state (bypasses RLS)
-          const { error: syncError } = await supabase.functions.invoke("sync-user-verification", {
-            body: { userId: data.user.id }
-          });
-
-          if (!syncError) {
-            // Re-fetch the role now that membership *should* have been activated in DB
-            access = await getUserAccess(data.user.id);
-          }
+          // Re-fetch the role one last time in case the database trigger just finished
+          access = await getUserAccess(data.user.id);
 
           // If still pending (email not confirmed or activation failed), block login
           if (access.role === ("pending_verification" as AuthRole)) {
@@ -1008,11 +1001,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
           }
         }
 
-        // Auto-sync if still pending_verification but possibly confirmed in Auth
+        // Auto-sync: If still pending_verification but confirmed in Auth, re-fetch access
         if (access.role === ("pending_verification" as AuthRole) && nextSession.user.email_confirmed_at) {
-          await supabase.functions.invoke("sync-user-verification", {
-            body: { userId: nextSession.user.id },
-          });
           access = await getUserAccess(nextSession.user.id);
         }
         if (!mounted) return;
@@ -1063,11 +1053,8 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         }
       }
 
-      // Auto-sync if still pending_verification but possibly confirmed in Auth
+      // Auto-sync: If still pending_verification but confirmed in Auth, re-fetch access
       if (access.role === ("pending_verification" as AuthRole) && nextSession.user.email_confirmed_at) {
-        await supabase.functions.invoke("sync-user-verification", {
-          body: { userId: nextSession.user.id },
-        });
         access = await getUserAccess(nextSession.user.id);
       }
       if (!mounted) return;

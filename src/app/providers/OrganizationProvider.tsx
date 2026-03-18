@@ -62,6 +62,7 @@ function mapMembership(row: Record<string, unknown>): OrganizationMembership {
     id: String(row.id ?? ""),
     organization_id: String(row.organization_id ?? ""),
     user_id: String(row.user_id ?? ""),
+    email: row.email ? String(row.email) : null,
     role: String(row.role ?? "employee"),
     department: row.department ? String(row.department) : null,
     account_state: String(row.account_state ?? "active"),
@@ -122,7 +123,7 @@ export function OrganizationProvider({ children }: { children: ReactNode }) {
 
         const membershipsResult = await unsafeSupabase
           .from("organization_memberships")
-          .select("id, organization_id, user_id, role, department, account_state, is_active, organization:organizations(*)")
+          .select("id, organization_id, user_id, email, role, department, account_state, is_active, organization:organizations(*)")
           .eq("user_id", userId)
           .eq("is_active", true);
 

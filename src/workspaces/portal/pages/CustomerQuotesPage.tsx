@@ -1,16 +1,16 @@
 "use client";
 
-import { useState, useEffect } from "react";
-import { Link } from "react-router-dom";
-import { FileText, Search, Eye, Send, CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
+import { useEffect, useState } from "react";
+import { FileText, Search, Send, CheckCircle, XCircle, Clock, Loader2 } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
+import { Link } from "react-router-dom";
 import { Card, CardContent } from "@/ui/shadcn/card";
-import { Button } from "@/ui/shadcn/button";
 import { Input } from "@/ui/shadcn/input";
 import { Badge } from "@/ui/shadcn/badge";
+import { Button } from "@/ui/shadcn/button";
 import { supabase } from "@/core/api/client";
-import { useAuth } from "@/core/auth/useAuth";
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@/ui/shadcn/table";
+import { usePortalScope } from "@/workspaces/portal/hooks/usePortalScope";
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: LucideIcon }> = {
   draft: { label: "Draft", color: "bg-muted text-muted-foreground", icon: Clock },
@@ -32,30 +32,38 @@ interface CustomerQuote {
 }
 
 export default function CustomerQuotesPage() {
-  const { user } = useAuth();
+  const { organizationId, organizationLoading, portalEmail, isReady } = usePortalScope();
   const [searchQuery, setSearchQuery] = useState("");
   const [quotes, setQuotes] = useState<CustomerQuote[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
   useEffect(() => {
     const fetchQuotes = async () => {
-      if (!user?.email) return;
-
       setIsLoading(true);
+
+      if (!organizationId || !portalEmail) {
+        setQuotes([]);
+        setIsLoading(false);
+        return;
+      }
+
       const { data, error } = await supabase
         .from("quotes")
         .select("*, accounts:accounts(name)")
-        .eq("customer_email", user.email)
+        .eq("organization_id", organizationId)
+        .eq("customer_email", portalEmail)
         .order("created_at", { ascending: false });
 
       if (!error && data) {
-        setQuotes(data);
+        setQuotes(data as any);
       }
       setIsLoading(false);
     };
 
-    fetchQuotes();
-  }, [user?.email]);
+    if (!organizationLoading) {
+      void fetchQuotes();
+    }
+  }, [organizationId, organizationLoading, portalEmail]);
 
   const filteredQuotes = quotes?.filter((quote) => {
     const matchesSearch =
@@ -68,7 +76,7 @@ export default function CustomerQuotesPage() {
     return new Intl.NumberFormat("en-IN", { style: "currency", currency: "INR" }).format(value || 0);
   };
 
-  if (isLoading) {
+  if (organizationLoading || isLoading || !isReady) {
     return (
       <div className="flex items-center justify-center h-64">
         <Loader2 className="h-8 w-8 animate-spin text-primary" />
@@ -136,8 +144,7 @@ export default function CustomerQuotesPage() {
                       <TableCell>{quote.created_at ? new Date(quote.created_at).toLocaleDateString() : "N/A"}</TableCell>
                       <TableCell className="text-right">
                         <Button variant="ghost" size="sm" asChild>
-                          <Link to={`/portal/quotes/${quote.id}`}>
-                            <Eye className="h-4 w-4 mr-1" />
+                          <Link to={quote.id}>
                             View
                           </Link>
                         </Button>

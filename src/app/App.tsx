@@ -83,6 +83,9 @@ const CustomerDocumentsPage = lazy(() => import("../workspaces/portal/pages/Cust
 const CustomerPendingSignaturesPage = lazy(
   () => import("../workspaces/portal/pages/CustomerPendingSignaturesPage"),
 );
+const CustomerQuoteDetailPage = lazy(() => import("../workspaces/portal/pages/CustomerQuoteDetailPage"));
+const CustomerContractDetailPage = lazy(() => import("../workspaces/portal/pages/CustomerContractDetailPage"));
+const CustomerSignaturePage = lazy(() => import("../workspaces/portal/pages/CustomerSignaturePage"));
 
 const DocumentsDashboard = lazy(() => import("../modules/documents/pages/DocumentsDashboard"));
 const DocumentTemplatesPage = lazy(() => import("../modules/documents/pages/DocumentTemplatesPage"));
@@ -268,7 +271,9 @@ function AppRoutes() {
         >
           <Route index element={<PortalDashboard />} />
           <Route path="quotes" element={<CustomerQuotesPage />} />
+          <Route path="quotes/:id" element={<CustomerQuoteDetailPage />} />
           <Route path="contracts" element={<CustomerContractsPage />} />
+          <Route path="contracts/:id" element={<CustomerContractDetailPage />} />
           <Route path="contract-templates" element={<TemplatesPage />} />
           <Route path="documents" element={<CustomerDocumentsPage />} />
           <Route
@@ -288,7 +293,7 @@ function AppRoutes() {
             }
           />
           <Route path="pending-signatures" element={<CustomerPendingSignaturesPage />} />
-          <Route path="settings" element={<Navigate to=".." replace />} />
+          <Route path="pending-signatures/:id" element={<CustomerSignaturePage />} />
         </Route>
 
         {/* Tenant Workspace */}

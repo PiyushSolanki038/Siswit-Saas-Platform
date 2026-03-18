@@ -3621,8 +3621,31 @@ export type Database = {
         }
         Returns: boolean
       }
+      accept_client_invitation_signup: {
+        Args: { p_token: string; p_user_id: string }
+        Returns: string
+      }
+      accept_employee_invitation_signup: {
+        Args: { p_employee_id?: string; p_token: string; p_user_id: string }
+        Returns: string
+      }
       app_is_platform_super_admin: {
         Args: { p_user_id: string }
+        Returns: boolean
+      }
+      app_user_can_select_portal_record: {
+        Args: {
+          p_created_by?: string
+          p_customer_email?: string
+          p_organization_id: string
+          p_owner_id?: string
+          p_signer_email?: string
+          p_user_id?: string
+        }
+        Returns: boolean
+      }
+      app_user_has_internal_organization_access: {
+        Args: { p_organization_id: string; p_user_id?: string }
         Returns: boolean
       }
       app_user_has_organization_access: {
@@ -3630,6 +3653,10 @@ export type Database = {
         Returns: boolean
       }
       claim_pending_invitations: { Args: never; Returns: number }
+      create_client_signup_membership: {
+        Args: { p_organization_id: string; p_user_id: string }
+        Returns: string
+      }
       create_signup_organization: {
         Args: {
           p_email: string
@@ -3663,6 +3690,32 @@ export type Database = {
           name: string
           org_code: string
           slug: string
+        }[]
+      }
+      get_client_invitation_details: {
+        Args: { p_token: string }
+        Returns: {
+          expires_at: string
+          id: string
+          invited_email: string
+          organization_code: string
+          organization_id: string
+          organization_name: string
+          status: Database["public"]["Enums"]["invitation_state"]
+        }[]
+      }
+      get_employee_invitation_details: {
+        Args: { p_token: string }
+        Returns: {
+          employee_role_id: string
+          expires_at: string
+          id: string
+          invited_email: string
+          organization_code: string
+          organization_id: string
+          organization_name: string
+          role: Database["public"]["Enums"]["app_role"]
+          status: Database["public"]["Enums"]["invitation_state"]
         }[]
       }
       get_inventory_value: { Args: never; Returns: number }
