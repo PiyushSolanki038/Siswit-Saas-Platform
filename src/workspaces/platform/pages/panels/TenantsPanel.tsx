@@ -18,7 +18,7 @@ interface TenantRow {
 }
 
 interface TenantMembershipRow {
-  tenant_id: string;
+  organization_id: string;
 }
 
 const statusTone: Record<string, string> = {
@@ -51,14 +51,14 @@ export default function TenantsPanel() {
         return;
       }
 
-      const memberships = (membershipsResult.data as any[] | null) ?? [];
+      const memberships = (membershipsResult.data as TenantMembershipRow[] | null) ?? [];
       const memberCountByOrg = memberships.reduce<Map<string, number>>((map, item) => {
         const orgId = item.organization_id;
         map.set(orgId, (map.get(orgId) ?? 0) + 1);
         return map;
       }, new Map());
 
-      const rows = ((orgsResult.data as any[] | null) ?? []).map((org) => ({
+      const rows = ((orgsResult.data as TenantRow[] | null) ?? []).map((org) => ({
         ...org,
         active_users: memberCountByOrg.get(org.id) ?? 0,
       }));

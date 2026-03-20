@@ -3,8 +3,8 @@ import { Footer } from "@/workspaces/website/components/layout/Footer";
 import { Button } from "@/ui/shadcn/button";
 import { Input } from "@/ui/shadcn/input";
 import { Textarea } from "@/ui/shadcn/textarea";
-import { 
-  Mail, Phone, MapPin, Clock, ArrowRight, 
+import {
+  Mail, Phone, MapPin, Clock, ArrowRight,
   Calendar, MessageSquare, Building2
 } from "lucide-react";
 import { useState } from "react";
@@ -39,6 +39,16 @@ const contactInfo = [
   },
 ];
 
+interface ContactInquiry {
+  first_name: string;
+  last_name: string;
+  email: string;
+  phone?: string;
+  company: string;
+  interest: string;
+  message: string;
+}
+
 const Contact = () => {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
@@ -57,8 +67,8 @@ const Contact = () => {
     setIsSubmitting(true);
 
     try {
-      const { error } = await (supabase
-        .from("contact_inquiries" as any)
+      const { error } = await supabase
+        .from("contact_inquiries")
         .insert([{
           first_name: formData.firstName,
           last_name: formData.lastName,
@@ -67,7 +77,7 @@ const Contact = () => {
           company: formData.company,
           interest: formData.interest,
           message: formData.message,
-        }]) as any);
+        }] as ContactInquiry[]);
 
       if (error) throw error;
 
@@ -85,10 +95,11 @@ const Contact = () => {
         message: "",
         interest: "demo",
       });
-    } catch (err: any) {
+    } catch (err: unknown) {
+      const errorMessage = err instanceof Error ? err.message : String(err);
       toast({
         title: "Error",
-        description: "Failed to send message: " + err.message,
+        description: "Failed to send message: " + errorMessage,
         variant: "destructive",
       });
     } finally {
@@ -120,7 +131,7 @@ const Contact = () => {
                   <span className="text-gradient">Conversation</span>
                 </h1>
                 <p className="text-lg text-muted-foreground">
-                  Have questions? Want a demo? Our team is here to help you transform 
+                  Have questions? Want a demo? Our team is here to help you transform
                   your business with SISWIT.
                 </p>
               </div>

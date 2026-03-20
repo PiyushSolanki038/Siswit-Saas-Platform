@@ -70,7 +70,7 @@ export default function CustomerContractsPage() {
     if (!organizationLoading) {
       void fetchContracts();
     }
-  }, [organizationId, organizationLoading, portalEmail]);
+  }, [organizationId, organizationLoading, portalEmail, accountId, contactId]);
 
   const filteredContracts = contracts?.filter((contract) => {
     const matchesSearch =

@@ -71,7 +71,7 @@ export default function CustomerPendingSignaturesPage() {
     if (!organizationLoading) {
       void fetchSignatures();
     }
-  }, [organizationId, organizationLoading, portalEmail]);
+  }, [organizationId, organizationLoading, portalEmail, accountId, contactId]);
 
   if (organizationLoading || isLoading || !isReady) {
     return (

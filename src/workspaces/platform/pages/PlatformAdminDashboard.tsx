@@ -10,43 +10,51 @@ import {
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/shadcn/card";
 import { Button } from "@/ui/shadcn/button";
 
+import { usePlatformDashboard } from "../hooks/usePlatformDashboard";
+import { Loader2 } from "lucide-react";
+
 export default function PlatformAdminDashboard() {
+  const { data, isLoading } = usePlatformDashboard();
+
+  if (isLoading || !data) {
+    return (
+      <div className="flex min-h-[400px] items-center justify-center">
+        <Loader2 className="h-8 w-8 animate-spin text-primary" />
+      </div>
+    );
+  }
+
+  const { stats: platformStats, recentTenants } = data;
+
   const stats = [
     {
       title: "Total Tenants",
-      value: "12",
-      change: "+3 this month",
+      value: platformStats.totalTenants.toString(),
+      change: "Live",
       icon: Building2,
       href: "/platform/tenants",
     },
     {
       title: "Total Users",
-      value: "248",
-      change: "+45 this month",
+      value: platformStats.totalUsers.toString(),
+      change: "Live",
       icon: Users,
       href: "/platform/users",
     },
     {
       title: "MRR",
-      value: "$12,450",
-      change: "+15% this month",
+      value: `$${platformStats.mrr.toLocaleString()}`,
+      change: "Current Month",
       icon: TrendingUp,
       href: "/platform/billing",
     },
     {
       title: "Active Sessions",
-      value: "89",
+      value: platformStats.activeSessions.toString(),
       change: "Current",
       icon: Activity,
       href: "/platform/users",
     },
-  ];
-
-  const recentTenants = [
-    { name: "Acme Corp", slug: "acme", plan: "Enterprise", status: "active", users: 45 },
-    { name: "TechStart Inc", slug: "techstart", plan: "Professional", status: "active", users: 12 },
-    { name: "DataFlow LLC", slug: "dataflow", plan: "Starter", status: "trial", users: 3 },
-    { name: "CloudNine Co", slug: "cloudnine", plan: "Professional", status: "active", users: 18 },
   ];
 
   return (

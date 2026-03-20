@@ -14,6 +14,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@
 import { toast } from "sonner";
 import { Separator } from "@/ui/shadcn/separator";
 import { Badge } from "@/ui/shadcn/badge";
+import { type ContractStatus } from "@/core/types/clm";
 
 
 export default function ContractBuilderPage() {
@@ -108,7 +109,7 @@ export default function ContractBuilderPage() {
     }
   };
 
-  const handleCreate = (status: any) => {
+  const handleCreate = (status: ContractStatus) => {
     createContract.mutate({
       ...contractData,
       status,

@@ -40,9 +40,24 @@ function emit(
     return;
   }
 
-  // Production sink: For now, we log to console in a structured way
-  // In a real production environment, this would call a Supabase Edge Function or Sentry
+  // Production sinks
+  // 1. Structured console for log aggregators
   console.log(JSON.stringify({ level, message, ...safeContext }));
+
+  // 2. Monitoring (e.g. Sentry) - Placeholder for developer to add token
+  // if (level === 'error') { window.Sentry?.captureException(message, { extra: safeContext }); }
+
+  // 3. Custom Supabase Log Drain (optional)
+  // Our logger is a core utility, so we avoid importing the supabase client directly here
+  // to avoid circular dependencies. Developers can add a hook to the window for global sinks.
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  if (typeof window !== "undefined" && (window as any).LOG_DRAIN_ENABLED) {
+    fetch("/functions/v1/log-drain", {
+      method: "POST",
+      headers: { "Content-Type": "application/json" },
+      body: JSON.stringify({ level, message, ...safeContext }),
+    }).catch(() => { /* Silent fail for logs */ });
+  }
 }
 
 export const logger = {

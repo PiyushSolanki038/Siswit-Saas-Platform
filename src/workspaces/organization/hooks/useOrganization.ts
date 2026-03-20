@@ -46,8 +46,9 @@ export function useUpdateOrganization() {
     onSuccess: () => {
       toast.success("Organization settings updated");
     },
-    onError: (error: any) => {
-      toast.error("Failed to update organization: " + error.message);
+    onError: (error: unknown) => {
+      const errorMessage = error instanceof Error ? error.message : String(error);
+      toast.error("Failed to update organization: " + errorMessage);
     },
   });
 }

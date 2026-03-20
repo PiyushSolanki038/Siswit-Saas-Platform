@@ -69,6 +69,7 @@ export interface DashboardData {
         leads: DashboardChartItem[];
         contracts: DashboardChartItem[];
         quotes: DashboardChartItem[];
+        orders: DashboardChartItem[];
     };
 }
 
@@ -94,6 +95,7 @@ export function useOrganizationDashboard() {
                 allLeadsResult,
                 allContractsResult,
                 allQuotesResult,
+                allOrdersResult,
             ] = await Promise.all([
                 supabase.from("leads").select("*", { count: "exact", head: true }).eq("tenant_id", tenantId),
                 supabase.from("contracts").select("*", { count: "exact", head: true }).eq("tenant_id", tenantId),
@@ -134,6 +136,7 @@ export function useOrganizationDashboard() {
                 supabase.from("leads").select("status, created_at").eq("tenant_id", tenantId),
                 supabase.from("contracts").select("status, created_at").eq("tenant_id", tenantId),
                 supabase.from("quotes").select("status, created_at").eq("tenant_id", tenantId),
+                supabase.from("purchase_orders").select("status, created_at").eq("tenant_id", tenantId),
             ]);
 
             return {
@@ -154,6 +157,7 @@ export function useOrganizationDashboard() {
                     leads: (allLeadsResult.data || []) as unknown as DashboardChartItem[],
                     contracts: (allContractsResult.data || []) as unknown as DashboardChartItem[],
                     quotes: (allQuotesResult.data || []) as unknown as DashboardChartItem[],
+                    orders: (allOrdersResult.data || []) as unknown as DashboardChartItem[],
                 }
             };
         },

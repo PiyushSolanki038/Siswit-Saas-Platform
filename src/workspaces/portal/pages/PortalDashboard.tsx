@@ -151,11 +151,12 @@ const PortalDashboard = () => {
           return;
         }
 
-        const withScope = (query: any) => {
+        const withScope = <T extends { eq: (column: string, value: string) => T }>(query: T): T => {
           if (contactId) return query.eq("contact_id", contactId);
           if (accountId) return query.eq("account_id", accountId);
           // If neither ID is available, we must NOT fall back to email for primary data objects
           // to prevent cross-org leaks. We return a query that will yield no results.
+          // Using a non-existent UUID as a safety break
           return query.eq("id", "00000000-0000-0000-0000-000000000000");
         };
 
@@ -194,8 +195,7 @@ const PortalDashboard = () => {
               .eq("organization_id", organizationId)
           ).order("created_at", { ascending: false }).limit(3);
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          recentQuotes?.forEach((q: any) => {
+          recentQuotes?.forEach((q: { id: string; name?: string | null; quote_number?: string | null; status?: string | null; created_at?: string | null }) => {
             activityItems.push({
               id: `q-${q.id}`,
               type: "quote",
@@ -211,8 +211,7 @@ const PortalDashboard = () => {
               .eq("organization_id", organizationId)
           ).order("created_at", { ascending: false }).limit(3);
 
-          // eslint-disable-next-line @typescript-eslint/no-explicit-any
-          recentContracts?.forEach((c: any) => {
+          recentContracts?.forEach((c: { id: string; name?: string | null; contract_number?: string | null; status?: string | null; created_at?: string | null }) => {
             activityItems.push({
               id: `c-${c.id}`,
               type: "contract",

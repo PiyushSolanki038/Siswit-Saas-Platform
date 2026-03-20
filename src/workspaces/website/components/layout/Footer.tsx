@@ -146,13 +146,13 @@ export function Footer() {
             &copy; {new Date().getFullYear()} SISWIT. All rights reserved.
           </p>
           <div className="flex gap-6">
-            <Link to="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <Link to="/privacy" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Privacy Policy
             </Link>
-            <Link to="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <Link to="/terms" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Terms of Service
             </Link>
-            <Link to="#" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
+            <Link to="/cookies" className="text-sm text-muted-foreground hover:text-foreground transition-colors">
               Cookie Policy
             </Link>
           </div>

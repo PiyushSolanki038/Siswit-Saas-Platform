@@ -493,7 +493,9 @@ export type Database = {
       client_invitations: {
         Row: {
           accepted_at: string | null
+          account_id: string | null
           cancelled_at: string | null
+          contact_id: string | null
           created_at: string
           expires_at: string
           id: string
@@ -508,7 +510,9 @@ export type Database = {
         }
         Insert: {
           accepted_at?: string | null
+          account_id?: string | null
           cancelled_at?: string | null
+          contact_id?: string | null
           created_at?: string
           expires_at: string
           id?: string
@@ -523,7 +527,9 @@ export type Database = {
         }
         Update: {
           accepted_at?: string | null
+          account_id?: string | null
           cancelled_at?: string | null
+          contact_id?: string | null
           created_at?: string
           expires_at?: string
           id?: string
@@ -537,6 +543,20 @@ export type Database = {
           updated_at?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "client_invitations_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "client_invitations_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "client_invitations_organization_id_fkey"
             columns: ["organization_id"]
@@ -552,6 +572,48 @@ export type Database = {
             referencedColumns: ["id"]
           },
         ]
+      }
+      contact_inquiries: {
+        Row: {
+          company: string | null
+          created_at: string
+          email: string
+          first_name: string
+          id: string
+          interest: string | null
+          last_name: string
+          message: string
+          phone: string | null
+          status: string
+          updated_at: string
+        }
+        Insert: {
+          company?: string | null
+          created_at?: string
+          email: string
+          first_name: string
+          id?: string
+          interest?: string | null
+          last_name: string
+          message: string
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Update: {
+          company?: string | null
+          created_at?: string
+          email?: string
+          first_name?: string
+          id?: string
+          interest?: string | null
+          last_name?: string
+          message?: string
+          phone?: string | null
+          status?: string
+          updated_at?: string
+        }
+        Relationships: []
       }
       contacts: {
         Row: {
@@ -2179,7 +2241,9 @@ export type Database = {
       }
       organization_memberships: {
         Row: {
+          account_id: string | null
           account_state: Database["public"]["Enums"]["account_state"]
+          contact_id: string | null
           created_at: string
           department: string | null
           email: string
@@ -2197,7 +2261,9 @@ export type Database = {
           user_id: string
         }
         Insert: {
+          account_id?: string | null
           account_state?: Database["public"]["Enums"]["account_state"]
+          contact_id?: string | null
           created_at?: string
           department?: string | null
           email: string
@@ -2215,7 +2281,9 @@ export type Database = {
           user_id: string
         }
         Update: {
+          account_id?: string | null
           account_state?: Database["public"]["Enums"]["account_state"]
+          contact_id?: string | null
           created_at?: string
           department?: string | null
           email?: string
@@ -2233,6 +2301,20 @@ export type Database = {
           user_id?: string
         }
         Relationships: [
+          {
+            foreignKeyName: "organization_memberships_account_id_fkey"
+            columns: ["account_id"]
+            isOneToOne: false
+            referencedRelation: "accounts"
+            referencedColumns: ["id"]
+          },
+          {
+            foreignKeyName: "organization_memberships_contact_id_fkey"
+            columns: ["contact_id"]
+            isOneToOne: false
+            referencedRelation: "contacts"
+            referencedColumns: ["id"]
+          },
           {
             foreignKeyName: "organization_memberships_employee_role_id_fkey"
             columns: ["employee_role_id"]
@@ -3633,17 +3715,30 @@ export type Database = {
         Args: { p_user_id: string }
         Returns: boolean
       }
-      app_user_can_select_portal_record: {
-        Args: {
-          p_created_by?: string
-          p_customer_email?: string
-          p_organization_id: string
-          p_owner_id?: string
-          p_signer_email?: string
-          p_user_id?: string
-        }
-        Returns: boolean
-      }
+      app_user_can_select_portal_record:
+        | {
+            Args: {
+              p_account_id?: string
+              p_contact_id?: string
+              p_created_by?: string
+              p_fallback_email?: string
+              p_organization_id: string
+              p_owner_id?: string
+              p_user_id?: string
+            }
+            Returns: boolean
+          }
+        | {
+            Args: {
+              p_created_by?: string
+              p_customer_email?: string
+              p_organization_id: string
+              p_owner_id?: string
+              p_signer_email?: string
+              p_user_id?: string
+            }
+            Returns: boolean
+          }
       app_user_has_internal_organization_access: {
         Args: { p_organization_id: string; p_user_id?: string }
         Returns: boolean

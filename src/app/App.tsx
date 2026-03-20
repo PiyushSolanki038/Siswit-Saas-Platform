@@ -48,6 +48,9 @@ const Contact = lazy(() => import("../workspaces/website/pages/Contact"));
 const Pricing = lazy(() => import("../workspaces/website/pages/Pricing"));
 const Products = lazy(() => import("../workspaces/website/pages/Products"));
 const Solutions = lazy(() => import("../workspaces/website/pages/Solutions"));
+const Privacy = lazy(() => import("../workspaces/website/pages/Privacy"));
+const Terms = lazy(() => import("../workspaces/website/pages/Terms"));
+const Cookies = lazy(() => import("../workspaces/website/pages/Cookies"));
 
 const Unauthorized = lazy(() => import("./pages/Unauthorized"));
 const NotFound = lazy(() => import("./pages/NotFound"));
@@ -193,6 +196,9 @@ function AppRoutes() {
         <Route path="/pricing" element={<Pricing />} />
         <Route path="/products" element={<Products />} />
         <Route path="/solutions" element={<Solutions />} />
+        <Route path="/privacy" element={<Privacy />} />
+        <Route path="/terms" element={<Terms />} />
+        <Route path="/cookies" element={<Cookies />} />
 
         <Route path="/auth" element={<Navigate to="/auth/sign-in" replace />} />
         <Route path="/auth/sign-in" element={<Auth />} />

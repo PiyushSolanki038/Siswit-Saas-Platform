@@ -155,11 +155,33 @@ export default function OrganizationAdminDashboard() {
 
   const { kpis, lists, charts } = dashboardData;
 
+  // Helper to calculate growth deltas
+  const getGrowth = (items: DashboardChartItem[]) => {
+    const now = new Date();
+    const sevenDaysAgo = subDays(now, 7);
+    const fourteenDaysAgo = subDays(now, 14);
+
+    const currentCount = items.filter(i => i.created_at && isAfter(new Date(i.created_at), sevenDaysAgo)).length;
+    const previousCount = items.filter(i => i.created_at && isAfter(new Date(i.created_at), fourteenDaysAgo) && !isAfter(new Date(i.created_at), sevenDaysAgo)).length;
+
+    if (previousCount === 0) return { delta: currentCount > 0 ? "+100%" : "0%", positive: true };
+    const diff = ((currentCount - previousCount) / previousCount) * 100;
+    return {
+      delta: `${diff >= 0 ? "+" : ""}${diff.toFixed(1)}%`,
+      positive: diff >= 0
+    };
+  };
+
+  const leadsGrowth = getGrowth(charts.leads);
+  const contractsGrowth = getGrowth(charts.contracts);
+  const quotesGrowth = getGrowth(charts.quotes);
+  const ordersGrowth = getGrowth(charts.orders);
+
   const kpiItems: KPIItem[] = [
-    { label: "Total Leads", value: kpis.leads, delta: "+12.7%", positive: true, emphasis: true },
-    { label: "Active Contracts", value: kpis.contracts, delta: "+5.2%", positive: true },
-    { label: "Pending Quotes", value: kpis.quotes, delta: "-1.9%", positive: false },
-    { label: "Purchase Orders", value: kpis.orders, delta: "+8.3%", positive: true },
+    { label: "Total Leads", value: kpis.leads, ...leadsGrowth, emphasis: true },
+    { label: "Active Contracts", value: kpis.contracts, ...contractsGrowth },
+    { label: "Pending Quotes", value: kpis.quotes, ...quotesGrowth },
+    { label: "Purchase Orders", value: kpis.orders, ...ordersGrowth },
   ];
 
   // Process Pie Chart (Records by Module)

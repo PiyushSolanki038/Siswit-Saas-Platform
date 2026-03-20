@@ -72,7 +72,7 @@ export default function CustomerQuotesPage() {
     if (!organizationLoading) {
       void fetchQuotes();
     }
-  }, [organizationId, organizationLoading, portalEmail]);
+  }, [organizationId, organizationLoading, portalEmail, accountId, contactId]);
 
   const filteredQuotes = quotes?.filter((quote) => {
     const matchesSearch =

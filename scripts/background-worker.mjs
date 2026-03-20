@@ -17,22 +17,39 @@ const supabase = createClient(url, serviceRoleKey, {
 
 const HANDLERS = {
   "document.generate": async (job) => {
-    // TODO: Integrate with document generation service
-    console.log(`[job:${job.id}] document.generate`, job.payload);
+    console.log(`[job:${job.id}] Executing document.generate`);
+    const { error } = await supabase.functions.invoke("generate-document", {
+      body: job.payload,
+    });
+    if (error) throw error;
   },
   "document.generate_pdf": async (job) => {
-    // TODO: Integrate with PDF conversion service
-    console.log(`[job:${job.id}] document.generate_pdf`, job.payload);
+    console.log(`[job:${job.id}] Executing document.generate_pdf`);
+    const { error } = await supabase.functions.invoke("convert-to-pdf", {
+      body: job.payload,
+    });
+    if (error) throw error;
   },
   "email.send": async (job) => {
-    // TODO: Integrate with Supabase Edge Function 'send-email'
-    console.log(`[job:${job.id}] email.send`, job.payload);
+    console.log(`[job:${job.id}] Executing email.send to ${job.payload?.to}`);
+    const { error } = await supabase.functions.invoke("send-email", {
+      body: job.payload,
+    });
+    if (error) throw error;
   },
   "email.reminder": async (job) => {
-    console.log(`[job:${job.id}] email.reminder`, job.payload);
+    console.log(`[job:${job.id}] Executing email.reminder`);
+    const { error } = await supabase.functions.invoke("send-reminder", {
+      body: job.payload,
+    });
+    if (error) throw error;
   },
   "contract.expiry_alert": async (job) => {
-    console.log(`[job:${job.id}] contract.expiry_alert`, job.payload);
+    console.log(`[job:${job.id}] Executing contract.expiry_alert`);
+    const { error } = await supabase.functions.invoke("contract-expiry-alert", {
+      body: job.payload,
+    });
+    if (error) throw error;
   },
 };
 
