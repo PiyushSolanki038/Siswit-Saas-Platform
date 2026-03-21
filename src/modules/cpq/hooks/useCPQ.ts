@@ -13,7 +13,6 @@ import {
   buildModuleCreatePayload,
   requireOrganizationScope,
 } from "@/core/utils/module-scope";
-import { softDeleteRecord } from "@/core/utils/soft-delete";
 import { safeWriteAuditLog } from "@/core/utils/audit";
 
 type ProductInsert = Database["public"]["Tables"]["products"]["Insert"];
@@ -85,7 +84,6 @@ export function useProducts() {
         .select("*")
         .eq("organization_id", requiredOrganizationId)
         .eq("is_active", true)
-        .is("deleted_at", null)
         .order("name");
 
       if (error) throw error;
@@ -211,13 +209,12 @@ export function useDeleteProduct() {
         throw new Error("Product not found or not accessible");
       }
 
-      const deleted = await softDeleteRecord({
-        table: "products",
-        id,
-        userId,
-        organizationId: tenantId || "",
-      });
-      if (!deleted) throw new Error("Failed to delete product");
+      const { error: deleteError } = await applyModuleMutationScope(
+        supabase.from("products").delete().eq("id", id),
+        scope,
+        [],
+      );
+      if (deleteError) throw deleteError;
 
       void safeWriteAuditLog({
         action: "product_delete",
@@ -229,7 +226,7 @@ export function useDeleteProduct() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["products"] });
-      toast.success("Product moved to recycle bin");
+      toast.success("Product deleted successfully");
     },
     onError: (error: unknown) => {
       toast.error("Error deleting product: " + getErrorMessage(error));
@@ -250,7 +247,7 @@ export function useQuotes() {
           .from("quotes")
           .select("*, accounts(id, name), contacts(id, first_name, last_name, email, phone), opportunities(id, name)"),
         scope,
-        { ownerColumns: ["owner_id"], hasSoftDelete: true },
+        { ownerColumns: ["owner_id"], hasSoftDelete: false },
       );
 
       const { data, error } = await scopedQuery.order("created_at", { ascending: false });
@@ -278,7 +275,7 @@ export function useQuote(id: string) {
           .select("*, accounts(id, name, billing_address, billing_city, billing_state, billing_zip, billing_country), contacts(id, first_name, last_name, email, phone), opportunities(id, name)")
           .eq("id", id),
         scope,
-        { ownerColumns: ["owner_id"], hasSoftDelete: true },
+        { ownerColumns: ["owner_id"], hasSoftDelete: false },
       );
 
       const { data, error } = await scopedQuery.single();
@@ -388,7 +385,7 @@ export function useUpdateQuote() {
         const { data: currentQuote } = await applyModuleReadScope(
           supabase.from("quotes").select("status").eq("id", id),
           scope,
-          { ownerColumns: ["owner_id"], hasSoftDelete: true },
+          { ownerColumns: ["owner_id"], hasSoftDelete: false },
         ).single();
 
         if (currentQuote) {
@@ -463,7 +460,7 @@ export function useDeleteQuote() {
       const quoteAccessResult = await applyModuleReadScope(
         supabase.from("quotes").select("id").eq("id", id),
         scope,
-        { ownerColumns: ["owner_id"], hasSoftDelete: true },
+        { ownerColumns: ["owner_id"], hasSoftDelete: false },
       ).maybeSingle();
       if (quoteAccessResult.error || !quoteAccessResult.data) {
         throw new Error("Quote not found or not accessible");
@@ -480,13 +477,12 @@ export function useDeleteQuote() {
         .is("deleted_at", null);
       if (childError) throw childError;
 
-      const deleted = await softDeleteRecord({
-        table: "quotes",
-        id,
-        userId,
-        organizationId: tenantId || "",
-      });
-      if (!deleted) throw new Error("Failed to delete quote");
+      const { error: deleteError } = await applyModuleMutationScope(
+        supabase.from("quotes").delete().eq("id", id),
+        scope,
+        ["owner_id"],
+      );
+      if (deleteError) throw deleteError;
 
       void safeWriteAuditLog({
         action: "quote_delete",
@@ -498,7 +494,7 @@ export function useDeleteQuote() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
-      toast.success("Quote moved to recycle bin");
+      toast.success("Quote deleted successfully");
     },
     onError: (error: unknown) => {
       toast.error("Error deleting quote: " + getErrorMessage(error));

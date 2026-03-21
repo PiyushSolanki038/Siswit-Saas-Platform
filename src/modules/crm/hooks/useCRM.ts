@@ -348,7 +348,7 @@ export function useLeads() {
       const scopedQuery = applyModuleReadScope(
         supabase.from("leads").select("*"),
         scope,
-        { ownerColumns: ["owner_id"], hasSoftDelete: true },
+        { ownerColumns: ["owner_id"], hasSoftDelete: false },
       );
 
       const { data, error } = await scopedQuery.order("created_at", { ascending: false });
@@ -471,13 +471,12 @@ export function useDeleteLead() {
         throw new Error("Lead not found or not accessible");
       }
 
-      const deleted = await softDeleteRecord({
-        table: "leads",
-        id,
-        userId,
-        organizationId: tenantId || "",
-      });
-      if (!deleted) throw new Error("Failed to delete lead");
+      const { error: deleteError } = await applyModuleMutationScope(
+        supabase.from("leads").delete().eq("id", id),
+        scope,
+        ["owner_id"],
+      );
+      if (deleteError) throw deleteError;
 
       void safeWriteAuditLog({
         action: "lead_delete",
@@ -489,7 +488,7 @@ export function useDeleteLead() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["leads"] });
-      toast.success("Lead moved to recycle bin");
+      toast.success("Lead deleted successfully");
     },
     onError: (error: unknown) => {
       toast.error("Error deleting lead: " + getErrorMessage(error));
@@ -508,7 +507,7 @@ export function useAccounts() {
       const scopedQuery = applyModuleReadScope(
         supabase.from("accounts").select("*"),
         scope,
-        { ownerColumns: ["owner_id"], hasSoftDelete: true },
+        { ownerColumns: ["owner_id"], hasSoftDelete: false },
       );
 
       const { data, error } = await scopedQuery.order("created_at", { ascending: false });
@@ -639,13 +638,12 @@ export function useDeleteAccount() {
         throw new Error("Account not found or not accessible");
       }
 
-      const deleted = await softDeleteRecord({
-        table: "accounts",
-        id,
-        userId,
-        organizationId: tenantId || "",
-      });
-      if (!deleted) throw new Error("Failed to delete account");
+      const { error: deleteError } = await applyModuleMutationScope(
+        supabase.from("accounts").delete().eq("id", id),
+        scope,
+        ["owner_id"],
+      );
+      if (deleteError) throw deleteError;
 
       void safeWriteAuditLog({
         action: "account_delete",
@@ -657,7 +655,7 @@ export function useDeleteAccount() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["accounts"] });
-      toast.success("Account moved to recycle bin");
+      toast.success("Account deleted successfully");
     },
     onError: (error: unknown) => {
       toast.error("Error deleting account: " + getErrorMessage(error));
@@ -676,7 +674,7 @@ export function useContacts(accountId?: string) {
       let scopedQuery = applyModuleReadScope(
         supabase.from("contacts").select("*"),
         scope,
-        { ownerColumns: ["owner_id"], hasSoftDelete: true },
+        { ownerColumns: ["owner_id"], hasSoftDelete: false },
       );
 
       if (accountId) {
@@ -811,13 +809,12 @@ export function useDeleteContact() {
         throw new Error("Contact not found or not accessible");
       }
 
-      const deleted = await softDeleteRecord({
-        table: "contacts",
-        id,
-        userId,
-        organizationId: tenantId || "",
-      });
-      if (!deleted) throw new Error("Failed to delete contact");
+      const { error: deleteError } = await applyModuleMutationScope(
+        supabase.from("contacts").delete().eq("id", id),
+        scope,
+        ["owner_id"],
+      );
+      if (deleteError) throw deleteError;
 
       void safeWriteAuditLog({
         action: "contact_delete",
@@ -829,7 +826,7 @@ export function useDeleteContact() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["contacts"] });
-      toast.success("Contact moved to recycle bin");
+      toast.success("Contact deleted successfully");
     },
     onError: (error: unknown) => {
       toast.error("Error deleting contact: " + getErrorMessage(error));
@@ -848,7 +845,7 @@ export function useOpportunities(accountId?: string) {
       let scopedQuery = applyModuleReadScope(
         supabase.from("opportunities").select("*"),
         scope,
-        { ownerColumns: ["owner_id"], hasSoftDelete: true },
+        { ownerColumns: ["owner_id"], hasSoftDelete: false },
       );
 
       if (accountId) {
@@ -994,13 +991,12 @@ export function useDeleteOpportunity() {
         throw new Error("Opportunity not found or not accessible");
       }
 
-      const deleted = await softDeleteRecord({
-        table: "opportunities",
-        id,
-        userId,
-        organizationId: tenantId || "",
-      });
-      if (!deleted) throw new Error("Failed to delete opportunity");
+      const { error: deleteError } = await applyModuleMutationScope(
+        supabase.from("opportunities").delete().eq("id", id),
+        scope,
+        ["owner_id"],
+      );
+      if (deleteError) throw deleteError;
 
       void safeWriteAuditLog({
         action: "opportunity_delete",
@@ -1012,7 +1008,7 @@ export function useDeleteOpportunity() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
-      toast.success("Opportunity moved to recycle bin");
+      toast.success("Opportunity deleted successfully");
     },
     onError: (error: unknown) => {
       toast.error("Error deleting opportunity: " + getErrorMessage(error));
@@ -1031,7 +1027,7 @@ export function useActivities(filters?: { opportunityId?: string; leadId?: strin
       let scopedQuery = applyModuleReadScope(
         supabase.from("activities").select("*"),
         scope,
-        { ownerColumns: ["owner_id"], hasSoftDelete: true },
+        { ownerColumns: ["owner_id"], hasSoftDelete: false },
       );
 
       if (filters?.opportunityId) {
@@ -1172,13 +1168,12 @@ export function useDeleteActivity() {
         throw new Error("Activity not found or not accessible");
       }
 
-      const deleted = await softDeleteRecord({
-        table: "activities",
-        id,
-        userId,
-        organizationId: tenantId || "",
-      });
-      if (!deleted) throw new Error("Failed to delete activity");
+      const { error: deleteError } = await applyModuleMutationScope(
+        supabase.from("activities").delete().eq("id", id),
+        scope,
+        ["owner_id"],
+      );
+      if (deleteError) throw deleteError;
 
       void safeWriteAuditLog({
         action: "activity_delete",
@@ -1190,7 +1185,7 @@ export function useDeleteActivity() {
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ["activities"] });
-      toast.success("Activity moved to recycle bin");
+      toast.success("Activity deleted successfully");
     },
     onError: (error: unknown) => {
       toast.error("Error deleting activity: " + getErrorMessage(error));
@@ -1275,7 +1270,7 @@ export function useQuotes() {
       const scopedQuery = applyModuleReadScope(
         supabase.from("quotes").select("*"),
         scope,
-        { ownerColumns: ["owner_id"], hasSoftDelete: true },
+        { ownerColumns: ["owner_id"], hasSoftDelete: false },
       );
 
       const { data, error } = await scopedQuery.order("created_at", { ascending: false });
@@ -1296,7 +1291,7 @@ export function useQuote(id: string) {
       const scopedQuoteQuery = applyModuleReadScope(
         supabase.from("quotes").select("*").eq("id", id),
         scope,
-        { ownerColumns: ["owner_id"], hasSoftDelete: true },
+        { ownerColumns: ["owner_id"], hasSoftDelete: false },
       );
       const { data, error } = await scopedQuoteQuery.single();
       if (error) throw error;
@@ -1530,25 +1525,25 @@ export function useDashboardStats() {
       const leadsQuery = applyModuleReadScope(
         supabase.from("leads").select("id", { count: "exact", head: true }),
         scope,
-        { ownerColumns: ["owner_id"], hasSoftDelete: true },
+        { ownerColumns: ["owner_id"], hasSoftDelete: false },
       );
 
       const accountsQuery = applyModuleReadScope(
         supabase.from("accounts").select("id", { count: "exact", head: true }),
         scope,
-        { ownerColumns: ["owner_id"], hasSoftDelete: true },
+        { ownerColumns: ["owner_id"], hasSoftDelete: false },
       );
 
       const quotesQuery = applyModuleReadScope(
         supabase.from("quotes").select("id", { count: "exact", head: true }),
         scope,
-        { ownerColumns: ["owner_id"], hasSoftDelete: true },
+        { ownerColumns: ["owner_id"], hasSoftDelete: false },
       );
 
       const opportunitiesQuery = applyModuleReadScope(
         supabase.from("opportunities").select("id, stage, amount, expected_revenue, is_closed, is_won"),
         scope,
-        { ownerColumns: ["owner_id"], hasSoftDelete: true },
+        { ownerColumns: ["owner_id"], hasSoftDelete: false },
       );
 
       const [{ count: leadsCount, error: leadsError }, { count: accountsCount, error: accountsError }, { count: quotesCount, error: quotesError }, { data: oppData, error: oppError }] =

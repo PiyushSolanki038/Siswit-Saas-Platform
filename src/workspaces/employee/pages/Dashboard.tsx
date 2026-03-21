@@ -12,6 +12,7 @@ import {
   DropdownMenuItem,
 } from "@/ui/shadcn/dropdown-menu";
 import { useAuth } from "@/core/auth/useAuth";
+import { useModuleScope } from "@/core/hooks/useModuleScope";
 import { supabase } from "@/core/api/client";
 import { useToast } from "@/core/hooks/use-toast";
 import { tenantAppPath } from "@/core/utils/routes";
@@ -111,6 +112,7 @@ const buildQuickActions = (routes: ReturnType<typeof buildDashboardRoutes>): Qui
 
 const Dashboard = () => {
   const { user, loading: authLoading } = useAuth();
+  const { organizationId, scope } = useModuleScope();
   const navigate = useNavigate();
   const { toast } = useToast();
   const { tenantSlug = "" } = useParams<{ tenantSlug: string }>();
@@ -131,7 +133,7 @@ const Dashboard = () => {
 
   useEffect(() => {
     const initializeDashboard = async () => {
-      if (!user) return;
+      if (!user || !organizationId) return;
       setDataLoading(true);
 
       try {
@@ -152,13 +154,18 @@ const Dashboard = () => {
           supabase
             .from("quotes")
             .select("id", { count: "exact" })
+            .eq("organization_id", organizationId as string)
             .in("status", ["draft", "pending_approval"]),
           supabase
             .from("contracts")
             .select("id", { count: "exact" })
+            .eq("organization_id", organizationId as string)
             .not("status", "eq", "expired")
             .neq("status", "cancelled"),
-          supabase.from("auto_documents").select("id", { count: "exact" }),
+          supabase
+            .from("auto_documents")
+            .select("id", { count: "exact" })
+            .eq("organization_id", organizationId as string),
           supabase.rpc("get_inventory_value"),
           supabase.rpc("get_revenue_mtd", {
             start_date: new Date(
@@ -173,6 +180,7 @@ const Dashboard = () => {
           supabase
             .from("activities")
             .select("subject, created_at, is_completed")
+            .eq("organization_id", organizationId as string)
             .order("created_at", { ascending: false })
             .limit(6),
         ]);
