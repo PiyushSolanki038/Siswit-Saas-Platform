@@ -3712,7 +3712,7 @@ export type Database = {
         Returns: string
       }
       app_is_platform_super_admin: {
-        Args: { p_user_id: string }
+        Args: { p_user_id?: string }
         Returns: boolean
       }
       app_user_can_select_portal_record:

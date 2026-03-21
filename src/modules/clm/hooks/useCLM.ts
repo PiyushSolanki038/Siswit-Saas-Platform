@@ -220,7 +220,7 @@ export function useContracts() {
       const scopedQuery = applyModuleReadScope(
         supabase.from("contracts").select("*, accounts(name), contacts(first_name, last_name)"),
         scope,
-        { ownerColumns: ["owner_id"], hasSoftDelete: true },
+        { ownerColumns: ["owner_id"], hasSoftDelete: false },
       );
 
       const { data, error } = await scopedQuery.order("created_at", { ascending: false });
@@ -240,7 +240,7 @@ export function useContract(id: string) {
       const scopedQuery = applyModuleReadScope(
         supabase.from("contracts").select("*").eq("id", id),
         scope,
-        { ownerColumns: ["owner_id"], hasSoftDelete: true },
+        { ownerColumns: ["owner_id"], hasSoftDelete: false },
       );
 
       const { data, error } = await scopedQuery.single();
@@ -689,7 +689,7 @@ export function useCLMDashboardStats() {
       const contractsQuery = applyModuleReadScope(
         supabase.from("contracts").select("*"),
         scope,
-        { ownerColumns: ["owner_id"], hasSoftDelete: true },
+        { ownerColumns: ["owner_id"], hasSoftDelete: false },
       );
 
       const templatesQuery = applyModuleReadScope(

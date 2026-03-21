@@ -207,7 +207,7 @@ export function useSuppliers() {
       const scopedQuery = applyModuleReadScope(
         supabase.from("suppliers").select("*"),
         scope,
-        { ownerColumns: ["created_by"], hasSoftDelete: true },
+        { ownerColumns: ["created_by"], hasSoftDelete: false },
       );
 
       const { data, error } = await scopedQuery.neq("is_active", false).order("name");
@@ -373,7 +373,7 @@ export function useInventoryItems() {
       const scopedQuery = applyModuleReadScope(
         supabase.from("inventory_items").select("*, product:products(*)"),
         scope,
-        { ownerColumns: [], hasSoftDelete: true },
+        { ownerColumns: [], hasSoftDelete: false },
       );
 
       const { data, error } = await scopedQuery.order("created_at", { ascending: false });
@@ -554,7 +554,7 @@ export function usePurchaseOrders() {
       const scopedQuery = applyModuleReadScope(
         supabase.from("purchase_orders").select("*, supplier:suppliers(*)"),
         scope,
-        { ownerColumns: ["created_by"], hasSoftDelete: true },
+        { ownerColumns: ["created_by"], hasSoftDelete: false },
       );
 
       const { data, error } = await scopedQuery.order("created_at", { ascending: false });
@@ -575,7 +575,7 @@ export function usePurchaseOrder(id: string) {
       const scopedQuery = applyModuleReadScope(
         supabase.from("purchase_orders").select("*, supplier:suppliers(*)").eq("id", id),
         scope,
-        { ownerColumns: ["created_by"], hasSoftDelete: true },
+        { ownerColumns: ["created_by"], hasSoftDelete: false },
       );
 
       const { data, error } = await scopedQuery.single();
@@ -858,7 +858,7 @@ export function useProductionOrders() {
       const scopedQuery = applyModuleReadScope(
         supabase.from("production_orders").select("*, product:products(*)"),
         scope,
-        { ownerColumns: ["created_by"], hasSoftDelete: true },
+        { ownerColumns: ["created_by"], hasSoftDelete: false },
       );
 
       const { data, error } = await scopedQuery.order("created_at", { ascending: false });
@@ -1017,7 +1017,7 @@ export function useFinancialRecords() {
       const scopedQuery = applyModuleReadScope(
         supabase.from("financial_records").select("*"),
         scope,
-        { ownerColumns: ["created_by"], hasSoftDelete: true },
+        { ownerColumns: ["created_by"], hasSoftDelete: false },
       );
 
       const { data, error } = await scopedQuery.order("record_date", { ascending: false });

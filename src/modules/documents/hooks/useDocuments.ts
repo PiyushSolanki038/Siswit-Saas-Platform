@@ -300,7 +300,7 @@ export function useAutoDocuments() {
       const scopedQuery = applyModuleReadScope(
         supabase.from("auto_documents").select("*"),
         scope,
-        { ownerColumns: ["owner_id", "created_by"], hasSoftDelete: true },
+        { ownerColumns: ["owner_id", "created_by"], hasSoftDelete: false },
       );
 
       const { data, error } = await scopedQuery.order("created_at", { ascending: false });
@@ -334,7 +334,7 @@ export function useAutoDocument(id: string) {
       const scopedQuery = applyModuleReadScope(
         supabase.from("auto_documents").select("*").eq("id", id),
         scope,
-        { ownerColumns: ["owner_id", "created_by"], hasSoftDelete: true },
+        { ownerColumns: ["owner_id", "created_by"], hasSoftDelete: false },
       );
 
       const { data, error } = await scopedQuery.single();
