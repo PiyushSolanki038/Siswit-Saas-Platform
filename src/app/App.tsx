@@ -66,6 +66,9 @@ const OrganizationSettingsPage = lazy(() => import("../workspaces/organization/p
 const OrganizationPerformancePage = lazy(() => import("../workspaces/organization/pages/OrganizationPerformancePage"));
 
 const Dashboard = lazy(() => import("../workspaces/employee/pages/Dashboard"));
+const EmployeeAlertsPage = lazy(() => import("../workspaces/employee/pages/EmployeeAlertsPage"));
+const EmployeeSettingsPage = lazy(() => import("../workspaces/employee/pages/EmployeeSettingsPage"));
+
 const OrganizationAdminDashboard = lazy(
   () => import("../workspaces/organization_admin/pages/OrganizationAdminDashboard"),
 );
@@ -184,6 +187,18 @@ function TenantWorkspaceDashboard() {
   }
 
   return <OrganizationAdminDashboard />;
+}
+
+function EmployeeAlertsRoute() {
+  const { role } = useAuth();
+  if (isTenantUserRole(role)) return <EmployeeAlertsPage />;
+  return <OrganizationAlertsPage />;
+}
+
+function EmployeeSettingsRoute() {
+  const { role } = useAuth();
+  if (isTenantUserRole(role)) return <EmployeeSettingsPage />;
+  return <OrganizationSettingsPage />;
 }
 
 function AppRoutes() {
@@ -395,9 +410,9 @@ function AppRoutes() {
           <Route path="users" element={<OrganizationUsersPage />} />
           <Route path="subscription" element={<OrganizationSubscriptionPage />} />
           <Route path="invitations" element={<OrganizationInvitationsPage />} />
-          <Route path="alerts" element={<OrganizationAlertsPage />} />
+          <Route path="alerts" element={<EmployeeAlertsRoute />} />
           <Route path="approvals" element={<OrganizationApprovalsPage />} />
-          <Route path="settings" element={<OrganizationSettingsPage />} />
+          <Route path="settings" element={<EmployeeSettingsRoute />} />
         </Route>
 
         {/* Root organization slug convenience — W-06: guard against reserved segments */}

@@ -39,11 +39,11 @@ interface AdminSidebarProps {
   onNavigate?: () => void;
 }
 
-export function AdminSidebar({ 
-  className, 
-  collapsed = false, 
+export function AdminSidebar({
+  className,
+  collapsed = false,
   onCollapseToggle,
-  onNavigate 
+  onNavigate
 }: AdminSidebarProps) {
   const { organization, subscription } = useOrganization();
   const { signOut } = useAuth();
@@ -63,21 +63,21 @@ export function AdminSidebar({
     {
       label: "Operations",
       items: [
-        { 
-          label: "CRM (All)", 
-          href: tenantAppPath(tenantSlug, "crm/leads"), 
+        {
+          label: "CRM (All)",
+          href: tenantAppPath(tenantSlug, "crm/leads"),
           icon: Briefcase,
           enabled: Boolean(subscription?.module_crm)
         },
-        { 
-          label: "CLM (All)", 
-          href: tenantAppPath(tenantSlug, "clm/contracts"), 
+        {
+          label: "CLM (All)",
+          href: tenantAppPath(tenantSlug, "clm/contracts"),
           icon: ShieldCheck,
           enabled: Boolean(subscription?.module_clm)
         },
-        { 
-          label: "CPQ (All)", 
-          href: tenantAppPath(tenantSlug, "cpq/quotes"), 
+        {
+          label: "CPQ (All)",
+          href: tenantAppPath(tenantSlug, "cpq/quotes"),
           icon: ShoppingBag,
           enabled: Boolean(subscription?.module_cpq)
         },
@@ -86,15 +86,15 @@ export function AdminSidebar({
     {
       label: "Logistics",
       items: [
-        { 
-          label: "ERP Hub", 
-          href: tenantAppPath(tenantSlug, "erp"), 
+        {
+          label: "ERP Hub",
+          href: tenantAppPath(tenantSlug, "erp"),
           icon: Truck,
           enabled: Boolean(subscription?.module_erp)
         },
-        { 
-          label: "Documents", 
-          href: tenantAppPath(tenantSlug, "documents"), 
+        {
+          label: "Documents",
+          href: tenantAppPath(tenantSlug, "documents"),
           icon: FileText,
           enabled: Boolean(subscription?.module_documents)
         },
@@ -119,9 +119,9 @@ export function AdminSidebar({
   const initials = organizationName.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
 
   return (
-    <aside 
+    <aside
       className={cn(
-        "flex flex-col bg-card/60 backdrop-blur-xl border-r border-border/40 h-full transition-all duration-300 relative z-20",
+        "flex flex-col bg-card/60 backdrop-blur-xl border-r border-border/40 h-full transition-all duration-300 relative z-20 overflow-hidden",
         "before:absolute before:inset-0 before:bg-purple-600/5 before:pointer-events-none before:z-[-1]",
         collapsed ? "w-16" : "w-64",
         className
@@ -132,7 +132,7 @@ export function AdminSidebar({
       <div className="h-16 flex items-center px-4 border-b border-border/40 shrink-0">
         {!collapsed ? (
           <div className="flex items-center gap-3 overflow-hidden">
-            <div 
+            <div
               className="h-8 w-8 rounded-lg flex items-center justify-center text-white shrink-0 font-bold text-sm shadow-sm"
               style={{ backgroundColor: primaryColor }}
             >
@@ -144,7 +144,7 @@ export function AdminSidebar({
             </div>
           </div>
         ) : (
-          <div 
+          <div
             className="h-8 w-8 rounded-lg flex items-center justify-center text-white mx-auto font-bold text-sm shadow-sm"
             style={{ backgroundColor: primaryColor }}
           >
@@ -166,7 +166,7 @@ export function AdminSidebar({
               {group.items.map((item) => {
                 const Icon = item.icon;
                 if (item.enabled === false) return null;
-                
+
                 return (
                   <NavLink
                     key={item.href}
@@ -174,12 +174,12 @@ export function AdminSidebar({
                     onClick={onNavigate}
                     className={({ isActive }) => cn(
                       "flex items-center gap-3 px-3 py-2 rounded-xl transition-all group relative",
-                      isActive 
-                        ? "bg-primary/10 text-primary" 
+                      isActive
+                        ? "bg-primary/10 text-primary"
                         : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
                       collapsed && "justify-center px-0"
                     )}
-                    style={({ isActive }) => ({ 
+                    style={({ isActive }) => ({
                       backgroundColor: isActive ? `${primaryColor}15` : undefined,
                       color: isActive ? primaryColor : undefined,
                     })}
@@ -189,7 +189,7 @@ export function AdminSidebar({
                         <Icon className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-110")} />
                         {!collapsed && <span className="text-sm font-medium">{item.label}</span>}
                         {isActive && !collapsed && (
-                          <div 
+                          <div
                             className="absolute right-2 w-1 h-4 rounded-full"
                             style={{ backgroundColor: primaryColor }}
                           />
