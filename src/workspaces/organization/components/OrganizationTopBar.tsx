@@ -32,6 +32,7 @@ import {
 import { cn } from "@/core/utils/utils";
 import { useAuth } from "@/core/auth/useAuth";
 import { useOrganization } from "@/workspaces/organization/hooks/useOrganization";
+import { NotificationBell } from "@/ui/notification-bell";
 
 interface OrganizationTopBarProps {
   onOpenSidebar: () => void;
@@ -367,6 +368,9 @@ export function OrganizationTopBar({ onOpenSidebar }: OrganizationTopBarProps) {
 
           <div className="flex-1" />
 
+          <div className="mx-1">
+            <NotificationBell />
+          </div>
           <ProfileDropdown mobile />
         </div>
 
@@ -463,6 +467,9 @@ export function OrganizationTopBar({ onOpenSidebar }: OrganizationTopBarProps) {
               <span className="ml-1 text-xs text-muted-foreground">(Soon)</span>
             </Button>
 
+            <div className="mx-2">
+              <NotificationBell />
+            </div>
             <ProfileDropdown />
           </div>
         </div>

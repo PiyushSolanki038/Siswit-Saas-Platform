@@ -1,5 +1,5 @@
 import { useState, useEffect } from "react";
-import { Package, Plus, Search, Edit, Trash2, IndianRupee } from "lucide-react";
+import { Package, Plus, Edit, Trash2, IndianRupee } from "lucide-react";
 import { toast } from "sonner";
 import { Card, CardContent, CardHeader, CardTitle } from "@/ui/shadcn/card";
 import { Button } from "@/ui/shadcn/button";
@@ -36,6 +36,35 @@ import {
 } from "@/ui/shadcn/select";
 import type { Product } from "@/core/types/cpq";
 import { PlanLimitBanner } from "@/ui/plan-limit-banner";
+import { ExportButton } from "@/ui/export-button";
+import { useSearch } from "@/core/hooks/useSearch";
+import { SearchBar } from "@/ui/search-bar";
+import { FilterBar } from "@/ui/filter-bar";
+
+const PRODUCT_FILTERS = [
+  {
+    key: "category",
+    label: "Category",
+    options: [
+      { label: "CPQ", value: "CPQ" },
+      { label: "CLM", value: "CLM" },
+      { label: "CRM", value: "CRM" },
+      { label: "E-Signature", value: "E-Signature" },
+      { label: "Analytics", value: "Analytics" },
+      { label: "Integration", value: "Integration" },
+      { label: "Documents", value: "Documents" },
+      { label: "Bundle", value: "Bundle" },
+    ],
+  },
+  {
+    key: "is_active",
+    label: "Status",
+    options: [
+      { label: "Active", value: "true" },
+      { label: "Inactive", value: "false" },
+    ],
+  },
+];
 
 const categories = [
   "CPQ",
@@ -49,8 +78,6 @@ const categories = [
 ];
 
 export default function ProductsPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedCategory, setSelectedCategory] = useState<string | null>(null);
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [editingProduct, setEditingProduct] = useState<Product | null>(null);
   const [productToDelete, setProductToDelete] = useState<Product | null>(null);
@@ -67,6 +94,14 @@ export default function ProductsPage() {
   const updateMutation = useUpdateProduct();
   const deleteMutation = useDeleteProduct();
   const { canDelete } = useCRUD();
+
+  const { searchQuery, setSearchQuery, activeFilters, setFilter, clearFilters, filteredData, resultCount, totalCount, filterDefs } = useSearch<Product>(products ?? [], {
+    searchFields: ["name", "sku", "description"],
+    filterDefs: PRODUCT_FILTERS,
+    customFilters: {
+      is_active: (item: Product, value: string) => String(item.is_active) === value,
+    },
+  });
 
   // Sync controlled form state when dialog opens or editingProduct changes
   useEffect(() => {
@@ -91,14 +126,7 @@ export default function ProductsPage() {
     }
   }, [isDialogOpen, editingProduct]);
 
-  const filteredProducts = products?.filter((product) => {
-    const matchesSearch =
-      product.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      product.description?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesCategory =
-      !selectedCategory || product.category === selectedCategory;
-    return matchesSearch && matchesCategory;
-  });
+
 
   const handleSubmit = (e: React.FormEvent<HTMLFormElement>) => {
     e.preventDefault();
@@ -153,6 +181,8 @@ export default function ProductsPage() {
             </p>
           </div>
 
+          <div className="flex items-center gap-2">
+          <ExportButton data={products ?? []} filename="siswit-products" sheetName="Products" isLoading={isLoading} />
           <Dialog
             open={isDialogOpen}
             onOpenChange={(open) => {
@@ -244,39 +274,15 @@ export default function ProductsPage() {
               </form>
             </DialogContent>
           </Dialog>
+          </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            {/* changed top-1/2 to top-5 for  */}
-            <Search className="absolute left-3 top-5 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input
-              placeholder="Search products..."
-              value={searchQuery}
-              onChange={(e) => setSearchQuery(e.target.value)}
-              className="pl-10"
-            />
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search products..." resultCount={resultCount} totalCount={totalCount} />
+            <ExportButton data={filteredData} filename="siswit-products" sheetName="Products" isLoading={isLoading} />
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <Button
-              variant={selectedCategory === null ? "default" : "outline"}
-              size="sm"
-              onClick={() => setSelectedCategory(null)}
-            >
-              All
-            </Button>
-            {categories.map((cat) => (
-              <Button
-                key={cat}
-                variant={selectedCategory === cat ? "default" : "outline"}
-                size="sm"
-                onClick={() => setSelectedCategory(cat)}
-              >
-                {cat}
-              </Button>
-            ))}
-          </div>
+          <FilterBar filters={filterDefs} activeFilters={activeFilters} onFilterChange={setFilter} onClearAll={clearFilters} />
         </div>
 
         {/* Inactive Toggle */}
@@ -302,7 +308,7 @@ export default function ProductsPage() {
           </div>
         ) : (
           <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-3">
-            {filteredProducts?.map((product) => (
+            {filteredData?.map((product) => (
               <Card
                 key={product.id}
                 className="group transition-all hover:shadow-lg rounded-xl"
@@ -421,7 +427,7 @@ export default function ProductsPage() {
           </div>
         )}
 
-        {filteredProducts?.length === 0 && (
+        {filteredData?.length === 0 && (
           <div className="text-center py-12">
             <Package className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
             <h3 className="text-lg font-medium">No products found</h3>

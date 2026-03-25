@@ -36,6 +36,44 @@ import {
 import { format } from "date-fns";
 import { Badge } from "@/ui/shadcn/badge";
 import { PlanLimitBanner } from "@/ui/plan-limit-banner";
+import { ExportButton } from "@/ui/export-button";
+import { useSearch } from "@/core/hooks/useSearch";
+import { SearchBar } from "@/ui/search-bar";
+import { FilterBar } from "@/ui/filter-bar";
+
+const OPP_FILTERS = [
+  {
+    key: "stage",
+    label: "Stage",
+    options: [
+      { label: "New", value: "new" },
+      { label: "Qualified", value: "qualified" },
+      { label: "Proposal", value: "proposal" },
+      { label: "Negotiation", value: "negotiation" },
+      { label: "Closed Won", value: "closed_won" },
+      { label: "Closed Lost", value: "closed_lost" },
+    ],
+  },
+  {
+    key: "amount_range",
+    label: "Amount",
+    options: [
+      { label: "Under ₹1L", value: "under_1l" },
+      { label: "₹1L – ₹10L", value: "1l_10l" },
+      { label: "Above ₹10L", value: "above_10l" },
+    ],
+  },
+];
+
+const OPP_CUSTOM_FILTERS = {
+  amount_range: (item: OpportunityRow, value: string) => {
+    const amt = item.amount ?? 0;
+    if (value === "under_1l") return amt < 100000;
+    if (value === "1l_10l") return amt >= 100000 && amt <= 1000000;
+    if (value === "above_10l") return amt > 1000000;
+    return true;
+  },
+};
 
 // Exactly matches Schema Enums
 export type OpportunityStage = 
@@ -83,6 +121,12 @@ export default function OpportunitiesPage() {
   const updateOpp = useUpdateOpportunity();
   const deleteOpp = useDeleteOpportunity();
   const { canDelete } = useCRUD();
+
+  const { searchQuery, setSearchQuery, activeFilters, setFilter, clearFilters, filteredData, resultCount, totalCount, filterDefs } = useSearch<OpportunityRow>(opportunities as unknown as OpportunityRow[], {
+    searchFields: ["name", "stage"],
+    filterDefs: OPP_FILTERS,
+    customFilters: OPP_CUSTOM_FILTERS,
+  });
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingOpp, setEditingOpp] = useState<OpportunityRow | null>(null);
@@ -228,18 +272,27 @@ export default function OpportunitiesPage() {
   return (
     <div className="space-y-6">
         <PlanLimitBanner resource="opportunities" className="mb-4" />
-        <div>
-          <h1 className="text-3xl font-bold">Opportunities</h1>
-          <p className="text-muted-foreground">Manage your deals</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Opportunities</h1>
+            <p className="text-muted-foreground">Manage your deals</p>
+          </div>
+        </div>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search opportunities..." resultCount={resultCount} totalCount={totalCount} />
+            <ExportButton data={filteredData} filename="siswit-opportunities" sheetName="Opportunities" isLoading={isLoading} />
+          </div>
+          <FilterBar filters={filterDefs} activeFilters={activeFilters} onFilterChange={setFilter} onClearAll={clearFilters} />
         </div>
 
         <DataTable
-          data={opportunities as unknown as OpportunityRow[]}
+          data={filteredData as OpportunityRow[]}
           columns={columns}
           loading={isLoading}
           onAdd={openCreateDialog}
           addLabel="Add Opportunity"
-          searchPlaceholder="Search opportunities..."
+          searchable={false}
         />
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

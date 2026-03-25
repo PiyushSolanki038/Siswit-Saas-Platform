@@ -15,6 +15,35 @@ import { format } from "date-fns";
 import { MoreHorizontal, Pencil, Trash2 } from "lucide-react";
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/ui/shadcn/dropdown-menu";
 import { PlanLimitBanner } from "@/ui/plan-limit-banner";
+import { ExportButton } from "@/ui/export-button";
+import { useSearch } from "@/core/hooks/useSearch";
+import { SearchBar } from "@/ui/search-bar";
+import { FilterBar } from "@/ui/filter-bar";
+import type { Lead as LeadType } from "@/core/types/crm";
+
+const LEAD_FILTERS = [
+  {
+    key: "status",
+    label: "Status",
+    options: [
+      { label: "New", value: "new" },
+      { label: "Contacted", value: "contacted" },
+      { label: "Qualified", value: "qualified" },
+      { label: "Unqualified", value: "unqualified" },
+    ],
+  },
+  {
+    key: "source",
+    label: "Source",
+    options: [
+      { label: "Website", value: "website" },
+      { label: "Referral", value: "referral" },
+      { label: "Cold Call", value: "cold_call" },
+      { label: "Social Media", value: "social_media" },
+      { label: "Other", value: "other" },
+    ],
+  },
+];
 
 export default function LeadsPage() {
   const { data: leads = [], isLoading } = useLeads();
@@ -22,6 +51,11 @@ export default function LeadsPage() {
   const updateLead = useUpdateLead();
   const deleteLead = useDeleteLead();
   const { canDelete } = useCRUD();
+
+  const { searchQuery, setSearchQuery, activeFilters, setFilter, clearFilters, filteredData, resultCount, totalCount, filterDefs } = useSearch<LeadType>(leads, {
+    searchFields: ["first_name", "last_name", "email", "company", "phone"],
+    filterDefs: LEAD_FILTERS,
+  });
   
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingLead, setEditingLead] = useState<Lead | null>(null);
@@ -57,8 +91,17 @@ export default function LeadsPage() {
   return (
     <div className="space-y-6">
         <PlanLimitBanner resource="leads" className="mb-4" />
-        <div><h1 className="text-3xl font-bold">Leads</h1><p className="text-muted-foreground">Manage your sales leads</p></div>
-        <DataTable data={leads} columns={columns} loading={isLoading} onAdd={openCreateDialog} addLabel="Add Lead" searchPlaceholder="Search leads..." />
+        <div className="flex items-center justify-between">
+          <div><h1 className="text-3xl font-bold">Leads</h1><p className="text-muted-foreground">Manage your sales leads</p></div>
+        </div>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search leads..." resultCount={resultCount} totalCount={totalCount} />
+            <ExportButton data={filteredData} filename="siswit-leads" sheetName="Leads" isLoading={isLoading} />
+          </div>
+          <FilterBar filters={filterDefs} activeFilters={activeFilters} onFilterChange={setFilter} onClearAll={clearFilters} />
+        </div>
+        <DataTable data={filteredData} columns={columns} loading={isLoading} onAdd={openCreateDialog} addLabel="Add Lead" searchable={false} />
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>
           <DialogContent className="max-w-md">
             <DialogHeader><DialogTitle>{editingLead ? "Edit Lead" : "Add Lead"}</DialogTitle></DialogHeader>

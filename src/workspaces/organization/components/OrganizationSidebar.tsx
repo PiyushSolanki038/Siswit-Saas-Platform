@@ -9,6 +9,7 @@ import {
   LayoutDashboard,
   LogOut,
   MailPlus,
+  Receipt,
   Settings,
   ShieldCheck,
   Users,
@@ -39,6 +40,7 @@ const sidebarItems: SidebarItem[] = [
   { label: "Invitations", href: "/organization/invitations", icon: MailPlus },
   { label: "Client Approvals", href: "/organization/approvals", icon: ShieldCheck },
   { label: "Plans and Billing", href: "/organization/plans", icon: CreditCard },
+  { label: "Billing", href: "/organization/billing", icon: Receipt },
   { label: "Alerts", href: "/organization/alerts", icon: Bell },
   { label: "Settings", href: "/organization/settings", icon: Settings },
 ];

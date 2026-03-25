@@ -15,6 +15,7 @@ import {
 } from "@/core/utils/module-scope";
 import { safeWriteAuditLog } from "@/core/utils/audit";
 import { usePlanLimits } from "@/core/hooks/usePlanLimits";
+import { useCreateNotification } from "@/core/hooks/useCreateNotification";
 
 type ProductInsert = Database["public"]["Tables"]["products"]["Insert"];
 type QuoteInsert = Database["public"]["Tables"]["quotes"]["Insert"];
@@ -325,6 +326,7 @@ export function useCreateQuote() {
   const queryClient = useQueryClient();
   const { scope, tenantId, userId } = useModuleScope();
   const { checkLimit, incrementUsage } = usePlanLimits();
+  const { notify } = useCreateNotification();
 
   return useMutation({
     mutationFn: async (quote: Omit<Partial<Quote>, "id" | "created_at" | "updated_at"> & { items?: QuoteItem[] }) => {
@@ -412,9 +414,20 @@ export function useCreateQuote() {
         valid_until: data.expiration_date,
       } as Quote;
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["quotes"] });
       toast.success("Quote created successfully");
+
+      if (tenantId) {
+        notify({
+          userId: userId || "",
+          organizationId: tenantId,
+          type: "quote_accepted", // Placeholder for quote_created
+          title: "New Quote Created",
+          message: `Quote ${data.quote_number} has been created`,
+          link: `/${tenantId}/app/cpq/quotes/${data.id}`,
+        });
+      }
     },
     onError: (error: unknown) => {
       toast.error("Error creating quote: " + getErrorMessage(error));

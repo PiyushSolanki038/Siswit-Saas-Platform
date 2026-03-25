@@ -4,8 +4,37 @@ import { Button } from "@/ui/shadcn/button";
 import { StatsCard } from "@/modules/crm/components/StatsCard";
 import { useAutoDocuments, useDocumentESignatures } from "@/modules/documents/hooks/useDocuments";
 import { DOCUMENT_STATUS_COLORS } from "@/core/types/documents";
-import { ArrowRight, CheckCircle2, FilePlus, FileStack, FileText, History, Send, Zap } from "lucide-react";
+import { ArrowRight, CheckCircle2, FilePlus, FileStack, FileText, History, Paperclip, Send, Zap } from "lucide-react";
 import { PlanLimitBanner } from "@/ui/plan-limit-banner";
+import { ExportButton } from "@/ui/export-button";
+import { useSearch } from "@/core/hooks/useSearch";
+import { SearchBar } from "@/ui/search-bar";
+import { FilterBar } from "@/ui/filter-bar";
+import { getFileUrl } from "@/core/utils/upload";
+
+const DOC_FILTERS = [
+  {
+    key: "type",
+    label: "Type",
+    options: [
+      { label: "Proposal", value: "proposal" },
+      { label: "Invoice", value: "invoice" },
+      { label: "Report", value: "report" },
+      { label: "Agreement", value: "agreement" },
+      { label: "Other", value: "other" },
+    ],
+  },
+  {
+    key: "status",
+    label: "Status",
+    options: [
+      { label: "Draft", value: "draft" },
+      { label: "Final", value: "final" },
+      { label: "Signed", value: "signed" },
+      { label: "Archived", value: "archived" },
+    ],
+  },
+];
 
 const quickActions = [
   {
@@ -59,6 +88,12 @@ const DocumentsDashboard = () => {
 
   const recentDocuments = documents.slice(0, 5);
 
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { searchQuery, setSearchQuery, activeFilters, setFilter, clearFilters, filteredData, resultCount, totalCount, filterDefs } = useSearch<any>(documents, {
+    searchFields: ["name", "type", "status"],
+    filterDefs: DOC_FILTERS,
+  });
+
   return (
     <div className="space-y-8">
       <PlanLimitBanner resource="documents" className="mb-4" />
@@ -67,12 +102,22 @@ const DocumentsDashboard = () => {
           <h1 className="text-2xl font-bold text-foreground">Document Automation</h1>
           <p className="text-muted-foreground">Create, manage, and deliver documents at scale.</p>
         </div>
-        <Link to="/dashboard/documents/create">
-          <Button variant="hero">
-            <FilePlus className="mr-2 h-4 w-4" />
-            Create Document
-          </Button>
-        </Link>
+        <div className="flex items-center gap-2">
+          <Link to="/dashboard/documents/create">
+            <Button variant="hero">
+              <FilePlus className="mr-2 h-4 w-4" />
+              Create Document
+            </Button>
+          </Link>
+        </div>
+      </div>
+
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search documents..." resultCount={resultCount} totalCount={totalCount} />
+          <ExportButton data={filteredData} filename="siswit-documents" sheetName="Documents" isLoading={isDocumentsLoading} />
+        </div>
+        <FilterBar filters={filterDefs} activeFilters={activeFilters} onFilterChange={setFilter} onClearAll={clearFilters} />
       </div>
 
       <div className="grid gap-6 sm:grid-cols-2 lg:grid-cols-4">
@@ -145,6 +190,11 @@ const DocumentsDashboard = () => {
                     <span className={`rounded-full px-2 py-1 text-xs font-medium capitalize ${DOCUMENT_STATUS_COLORS[document.status]}`}>
                       {document.status}
                     </span>
+                    {document.file_path && (
+                      <Button size="sm" variant="ghost" onClick={() => window.open(getFileUrl("documents", document.file_path as string), "_blank")}>
+                        <Paperclip className="h-3.5 w-3.5" />
+                      </Button>
+                    )}
                     <Link to={`/dashboard/documents/${document.id}/esign`}>
                       <Button size="sm" variant="outline">
                         <Send className="mr-1 h-3.5 w-3.5" />

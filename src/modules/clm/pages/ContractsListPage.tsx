@@ -1,9 +1,7 @@
-import { useState } from "react";
-import { FileText, Plus, Search, Eye, Edit, Trash2, Send, CheckCircle, XCircle, Clock, PenTool, Upload } from "lucide-react";
+import { FileText, Plus, Eye, Edit, Trash2, Send, CheckCircle, XCircle, Clock, PenTool, Upload } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/ui/shadcn/card";
 import { Button } from "@/ui/shadcn/button";
-import { Input } from "@/ui/shadcn/input";
 import { Badge } from "@/ui/shadcn/badge";
 import { useParams, Link, useNavigate } from "react-router-dom";
 import { format } from "date-fns";
@@ -11,8 +9,27 @@ import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from "@
 import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/ui/shadcn/dropdown-menu";
 import { useContracts, useUpdateContract, useDeleteContract } from "@/modules/clm/hooks/useCLM";
 import { useCRUD } from "@/core/rbac/usePermissions";
-import type { Contract } from "@/core/types/clm";
 import { PlanLimitBanner } from "@/ui/plan-limit-banner";
+import { ExportButton } from "@/ui/export-button";
+import { useSearch } from "@/core/hooks/useSearch";
+import { SearchBar } from "@/ui/search-bar";
+import { FilterBar } from "@/ui/filter-bar";
+
+const CONTRACT_FILTERS = [
+  {
+    key: "status",
+    label: "Status",
+    options: [
+      { label: "Draft", value: "draft" },
+      { label: "Pending Review", value: "pending_review" },
+      { label: "Approved", value: "approved" },
+      { label: "Sent for Signature", value: "sent" },
+      { label: "Signed", value: "signed" },
+      { label: "Expired", value: "expired" },
+      { label: "Cancelled", value: "cancelled" },
+    ],
+  },
+];
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: LucideIcon }> = {
   draft: { label: "Draft", color: "bg-muted text-muted-foreground", icon: Clock },
@@ -27,8 +44,6 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: Lucide
 
 export default function ContractsListPage() {
   const { tenantSlug } = useParams();
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const { data: contracts = [], isLoading } = useContracts();
@@ -36,13 +51,10 @@ export default function ContractsListPage() {
   const deleteContract = useDeleteContract();
   const { canDelete } = useCRUD();
 
-  const filteredContracts = contracts.filter((contract: Contract) => {
-    const matchesSearch =
-      contract.contract_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contract.name?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      contract.accounts?.name?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = !selectedStatus || contract.status === selectedStatus;
-    return matchesSearch && matchesStatus;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { searchQuery, setSearchQuery, activeFilters, setFilter, clearFilters, filteredData, resultCount, totalCount, filterDefs } = useSearch<any>(contracts, {
+    searchFields: ["name", "contract_number", "status"],
+    filterDefs: CONTRACT_FILTERS,
   });
 
   const formatCurrency = (value: number) => {
@@ -67,23 +79,12 @@ export default function ContractsListPage() {
         </div>
       </div>
 
-      {/* Filters */}
-      <div className="flex flex-col sm:flex-row gap-4">
-        <div className="relative flex-1">
-          <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-          <Input placeholder="Search contracts..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search contracts..." resultCount={resultCount} totalCount={totalCount} />
+          <ExportButton data={filteredData} filename="siswit-contracts" sheetName="Contracts" isLoading={isLoading} />
         </div>
-        <div className="flex gap-2 flex-wrap">
-          <Button variant={selectedStatus === null ? "default" : "outline"} size="sm" onClick={() => setSelectedStatus(null)}>All</Button>
-          {["draft", "pending_review", "approved", "sent", "signed", "expired"].map((status) => {
-            const config = STATUS_CONFIG[status];
-            return (
-              <Button key={status} variant={selectedStatus === status ? "default" : "outline"} size="sm" onClick={() => setSelectedStatus(status)}>
-                {config.label}
-              </Button>
-            );
-          })}
-        </div>
+        <FilterBar filters={filterDefs} activeFilters={activeFilters} onFilterChange={setFilter} onClearAll={clearFilters} />
       </div>
 
       {/* Contracts Table */}
@@ -109,7 +110,7 @@ export default function ContractsListPage() {
                     <TableCell colSpan={8} className="h-16 animate-pulse bg-muted/20" />
                   </TableRow>
                 ))
-              ) : filteredContracts?.length === 0 ? (
+              ) : filteredData?.length === 0 ? (
                 <TableRow>
                   <TableCell colSpan={8} className="text-center py-12">
                     <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -117,7 +118,7 @@ export default function ContractsListPage() {
                   </TableCell>
                 </TableRow>
               ) : (
-                filteredContracts?.map((contract) => {
+                filteredData?.map((contract: any) => {
                   const statusConfig = STATUS_CONFIG[contract.status || "draft"] || STATUS_CONFIG.draft;
                   const StatusIcon = statusConfig.icon;
                   return (

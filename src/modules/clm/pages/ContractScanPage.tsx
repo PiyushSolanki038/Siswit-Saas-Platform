@@ -1,11 +1,20 @@
 import { useState } from "react";
 import { useNavigate, useParams } from "react-router-dom";
-import { Upload, FileText, AlertTriangle, CheckCircle, Clock, ArrowLeft, Sparkles, Shield, Calendar, DollarSign, Users, RefreshCw } from "lucide-react";
+import { 
+  FileText, AlertTriangle, CheckCircle, Clock, ArrowLeft, 
+  Sparkles, Shield, Calendar, DollarSign, Users, RefreshCw, Trash2, Link as LinkIcon 
+} from "lucide-react";
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/ui/shadcn/card";
 import { Button } from "@/ui/shadcn/button";
 import { Badge } from "@/ui/shadcn/badge";
 import { Progress } from "@/ui/shadcn/progress";
 import { toast } from "sonner";
+import { useModuleScope } from "@/core/hooks/useModuleScope";
+import { useContractScans, useCreateContractScan, useDeleteContractScan } from "@/modules/clm/hooks/useCLM";
+import { FileUpload } from "@/ui/file-upload";
+import { format, parseISO } from "date-fns";
+import { formatFileSize } from "@/core/utils/upload";
+import type { UploadResult } from "@/core/utils/upload";
 
 interface ScanResult {
   parties: string[];
@@ -21,40 +30,69 @@ interface ScanResult {
 export default function ContractScanPage() {
   const { tenantSlug } = useParams<{ tenantSlug: string }>();
   const navigate = useNavigate();
+  const { organizationId } = useModuleScope();
+  
   const [isScanning, setIsScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(0);
   const [scanResult, setScanResult] = useState<ScanResult | null>(null);
-  const [fileName, setFileName] = useState("");
+  const [activeFile, setActiveFile] = useState<{ name: string; url: string } | null>(null);
 
-  const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    if (!file) return;
+  // Get current contract ID if available (optional for general scanner)
+  const { contractId } = useParams<{ contractId: string }>();
+  
+  const { data: scans = [], isLoading: isScansLoading } = useContractScans((contractId as string) || "global");
+  const createScanMutation = useCreateContractScan();
+  const deleteScanMutation = useDeleteContractScan();
 
-    setFileName(file.name);
+  const handleUploadComplete = async (result: UploadResult) => {
+    setActiveFile({ name: result.name, url: result.url });
     setIsScanning(true);
     setScanResult(null);
 
-    // Simulate AI scanning process
-    for (let i = 0; i <= 100; i += 10) {
-      await new Promise((r) => setTimeout(r, 300));
+    // Simulate AI scanning process (since we don't have a real AI backend yet)
+    // In production, this would be a separate VPC/Edge Function call post-upload
+    for (let i = 0; i <= 100; i += 20) {
+      await new Promise((r) => setTimeout(r, 400));
       setScanProgress(i);
     }
 
-    // AI scan results - replace with actual API call in production
+    // AI scan results mock
     const scanResultData: ScanResult = {
-      parties: [],
-      startDate: "",
-      endDate: "",
-      value: "",
-      paymentTerms: "",
-      renewalClause: "",
-      riskFlags: [],
-      keyClausesClauses: [],
+      parties: ["SISWIT Solutions", "Global Tech Corp"],
+      startDate: "2024-01-01",
+      endDate: "2025-01-01",
+      value: "€45,000",
+      paymentTerms: "Net 30",
+      renewalClause: "Automatic 12-month renewal unless cancelled 60 days prior.",
+      riskFlags: [
+        { level: "low", message: "Standard termination clauses detected." },
+        { level: "medium", message: "Auto-renewal period is shorter than industry average." }
+      ],
+      keyClausesClauses: [
+        { title: "Indemnification", summary: "Standard mutual indemnification.", risk: "low" },
+        { title: "Liability Cap", summary: "Limited to 12 months of fees.", risk: "medium" }
+      ],
     };
 
-    setScanResult(scanResultData);
-    setIsScanning(false);
-    toast.success("Contract scan completed");
+    try {
+      await createScanMutation.mutateAsync({
+        contract_id: contractId || null,
+        file_name: result.name,
+        file_path: result.path,
+        file_url: result.url,
+        file_size: result.size,
+        content_type: "application/pdf", // Simplified
+        ocr_text: JSON.stringify(scanResultData),
+        scan_date: new Date().toISOString(),
+      });
+
+      setScanResult(scanResultData);
+      setIsScanning(false);
+      toast.success("Contract scan saved to history");
+    } catch (err) {
+      setIsScanning(false);
+      console.error("Failed to save scan record:", err);
+    }
   };
 
   const getRiskColor = (level: "low" | "medium" | "high") => {
@@ -70,6 +108,12 @@ export default function ContractScanPage() {
       case "low": return <CheckCircle className="h-4 w-4" />;
       case "medium": return <Clock className="h-4 w-4" />;
       case "high": return <AlertTriangle className="h-4 w-4" />;
+    }
+  };
+
+  const handleDeleteScan = async (id: string) => {
+    if (window.confirm("Are you sure you want to delete this scan?")) {
+      await deleteScanMutation.mutateAsync(id);
     }
   };
 
@@ -94,30 +138,28 @@ export default function ContractScanPage() {
 
       <div className="grid gap-6 lg:grid-cols-3">
         {/* Upload Section */}
-        <div className="lg:col-span-1">
+        <div className="lg:col-span-1 space-y-6">
           <Card>
             <CardHeader>
               <CardTitle className="flex items-center gap-2">
                 <Sparkles className="h-5 w-5 text-primary" />
-                AI Contract Analysis
+                New Analysis
               </CardTitle>
               <CardDescription>Upload a contract to extract key information and identify risks</CardDescription>
             </CardHeader>
             <CardContent className="space-y-4">
-              <label className="block">
-                <div className="border-2 border-dashed border-border rounded-lg p-8 text-center cursor-pointer hover:bg-muted/50 transition-colors">
-                  <Upload className="h-10 w-10 mx-auto text-muted-foreground mb-4" />
-                  <p className="font-medium">Drop contract file here</p>
-                  <p className="text-sm text-muted-foreground">or click to browse</p>
-                  <p className="text-xs text-muted-foreground mt-2">PDF, DOCX, DOC (max 10MB)</p>
-                </div>
-                <input type="file" accept=".pdf,.docx,.doc" onChange={handleFileUpload} className="hidden" />
-              </label>
+              <FileUpload
+                bucket="contract-scans"
+                organizationId={organizationId || ""}
+                onUploadComplete={handleUploadComplete}
+                label="Contract File"
+                disabled={isScanning}
+              />
 
-              {isScanning && (
+              {isScanning && (activeFile) && (
                 <div className="space-y-2">
                   <div className="flex items-center justify-between text-sm">
-                    <span>Scanning {fileName}...</span>
+                    <span>Analyzing {activeFile.name}...</span>
                     <span>{scanProgress}%</span>
                   </div>
                   <Progress value={scanProgress} />
@@ -126,16 +168,53 @@ export default function ContractScanPage() {
               )}
 
               {scanResult && (
-                <Button variant="outline" className="w-full" onClick={() => { setScanResult(null); setFileName(""); }}>
+                <Button variant="outline" className="w-full" onClick={() => { setScanResult(null); setActiveFile(null); }}>
                   <RefreshCw className="h-4 w-4 mr-2" />Scan Another Contract
                 </Button>
               )}
             </CardContent>
           </Card>
 
+          {/* History Section */}
+          <Card>
+            <CardHeader>
+              <CardTitle className="text-sm font-medium">Recent Scans</CardTitle>
+            </CardHeader>
+            <CardContent className="p-0">
+              <div className="divide-y divide-border">
+                {isScansLoading ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">Loading scans...</div>
+                ) : scans.length === 0 ? (
+                  <div className="p-4 text-center text-sm text-muted-foreground">No recent scans</div>
+                ) : (
+                  scans.map((scan) => (
+                    <div key={scan.id} className="p-3 flex items-center justify-between group">
+                      <div className="min-w-0">
+                        <p className="text-sm font-medium truncate">{scan.file_name}</p>
+                        <p className="text-xs text-muted-foreground">
+                          {scan.scan_date ? format(parseISO(scan.scan_date), "MMM d, HH:mm") : "Recently"} • {formatFileSize(scan.file_size || 0)}
+                        </p>
+                      </div>
+                      <div className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity">
+                        <Button variant="ghost" size="icon" className="h-7 w-7" asChild>
+                          <a href={scan.file_url || "#"} target="_blank" rel="noopener noreferrer">
+                            <LinkIcon className="h-3.5 w-3.5" />
+                          </a>
+                        </Button>
+                        <Button variant="ghost" size="icon" className="h-7 w-7 text-destructive" onClick={() => handleDeleteScan(scan.id)}>
+                          <Trash2 className="h-3.5 w-3.5" />
+                        </Button>
+                      </div>
+                    </div>
+                  ))
+                )}
+              </div>
+            </CardContent>
+          </Card>
+
           {/* Risk Summary */}
           {scanResult && (
-            <Card className="mt-6">
+            <Card>
               <CardHeader>
                 <CardTitle className="flex items-center gap-2">
                   <Shield className="h-5 w-5" />
@@ -266,7 +345,9 @@ export default function ContractScanPage() {
                   <div className="flex items-center justify-between">
                     <p className="text-sm text-muted-foreground">Ready to proceed with this contract?</p>
                     <div className="flex gap-2">
-                      <Button variant="outline">Download Report</Button>
+                      <Button variant="outline" asChild>
+                        <a href={activeFile?.url || "#"} target="_blank" rel="noopener noreferrer">Download Report</a>
+                      </Button>
                       <Button onClick={() => navigate(`/${tenantSlug}/app/clm/contracts/new`)}>Create Contract</Button>
                     </div>
                   </div>

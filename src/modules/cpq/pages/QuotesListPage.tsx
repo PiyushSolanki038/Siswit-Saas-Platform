@@ -1,9 +1,8 @@
 import { useState } from "react";
-import { FileText, Plus, Search, Eye, Edit, Trash2, Send, CheckCircle, XCircle, Clock } from "lucide-react";
+import { FileText, Plus, Eye, Edit, Trash2, Send, CheckCircle, XCircle, Clock } from "lucide-react";
 import type { LucideIcon } from "lucide-react";
 import { Card, CardContent } from "@/ui/shadcn/card";
 import { Button } from "@/ui/shadcn/button";
-import { Input } from "@/ui/shadcn/input";
 import { Badge } from "@/ui/shadcn/badge";
 import { useQuotes, useUpdateQuoteStatus, useDeleteQuote } from "@/modules/cpq/hooks/useCPQ";
 import { useCRUD } from "@/core/rbac/usePermissions";
@@ -23,6 +22,26 @@ import {
 } from "@/ui/shadcn/alert-dialog";
 import type { QuoteStatus } from "@/core/types/cpq";
 import { PlanLimitBanner } from "@/ui/plan-limit-banner";
+import { ExportButton } from "@/ui/export-button";
+import { useSearch } from "@/core/hooks/useSearch";
+import { SearchBar } from "@/ui/search-bar";
+import { FilterBar } from "@/ui/filter-bar";
+
+const QUOTE_FILTERS = [
+  {
+    key: "status",
+    label: "Status",
+    options: [
+      { label: "Draft", value: "draft" },
+      { label: "Pending Approval", value: "pending_approval" },
+      { label: "Approved", value: "approved" },
+      { label: "Sent", value: "sent" },
+      { label: "Accepted", value: "accepted" },
+      { label: "Rejected", value: "rejected" },
+      { label: "Expired", value: "expired" },
+    ],
+  },
+];
 
 const STATUS_CONFIG: Record<string, { label: string; color: string; icon: LucideIcon }> = {
   draft: { label: "Draft", color: "bg-muted text-muted-foreground", icon: Clock },
@@ -35,8 +54,6 @@ const STATUS_CONFIG: Record<string, { label: string; color: string; icon: Lucide
 };
 
 export default function QuotesListPage() {
-  const [searchQuery, setSearchQuery] = useState("");
-  const [selectedStatus, setSelectedStatus] = useState<string | null>(null);
   const navigate = useNavigate();
 
   const { data: quotes, isLoading } = useQuotes();
@@ -45,12 +62,10 @@ export default function QuotesListPage() {
   const { canDelete } = useCRUD();
   const [quoteToDelete, setQuoteToDelete] = useState<string | null>(null);
 
-  const filteredQuotes = quotes?.filter((quote) => {
-    const matchesSearch =
-      quote.quote_number?.toLowerCase().includes(searchQuery.toLowerCase()) ||
-      quote.accounts?.name?.toLowerCase().includes(searchQuery.toLowerCase());
-    const matchesStatus = !selectedStatus || quote.status === selectedStatus;
-    return matchesSearch && matchesStatus;
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { searchQuery, setSearchQuery, activeFilters, setFilter, clearFilters, filteredData, resultCount, totalCount, filterDefs } = useSearch<any>(quotes ?? [], {
+    searchFields: ["quote_number", "status"],
+    filterDefs: QUOTE_FILTERS,
   });
 
   const formatCurrency = (value: number) => {
@@ -96,25 +111,19 @@ export default function QuotesListPage() {
             <h1 className="text-3xl font-bold">Quotes</h1>
             <p className="text-muted-foreground">Manage and track all your quotes</p>
           </div>
-          <Button asChild>
-            <Link to="/dashboard/cpq/quotes/new"><Plus className="h-4 w-4 mr-2" />Create Quote</Link>
-          </Button>
+          <div className="flex items-center gap-2">
+            <Button asChild>
+              <Link to="/dashboard/cpq/quotes/new"><Plus className="h-4 w-4 mr-2" />Create Quote</Link>
+            </Button>
+          </div>
         </div>
 
-        {/* Filters */}
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search className="absolute left-3 top-5 transform -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-            <Input placeholder="Search by quote number or account..." value={searchQuery} onChange={(e) => setSearchQuery(e.target.value)} className="pl-10" />
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search by quote number..." resultCount={resultCount} totalCount={totalCount} />
+            <ExportButton data={filteredData} filename="siswit-quotes" sheetName="Quotes" isLoading={isLoading} />
           </div>
-          <div className="flex gap-2 flex-wrap">
-            <Button variant={selectedStatus === null ? "default" : "outline"} size="sm" onClick={() => setSelectedStatus(null)}>All</Button>
-            {Object.entries(STATUS_CONFIG).map(([status, config]) => (
-              <Button key={status} variant={selectedStatus === status ? "default" : "outline"} size="sm" onClick={() => setSelectedStatus(status)}>
-                {config.label}
-              </Button>
-            ))}
-          </div>
+          <FilterBar filters={filterDefs} activeFilters={activeFilters} onFilterChange={setFilter} onClearAll={clearFilters} />
         </div>
 
         {/* Quotes Table */}
@@ -139,7 +148,7 @@ export default function QuotesListPage() {
                       <TableCell colSpan={7} className="h-16 animate-pulse bg-muted/20" />
                     </TableRow>
                   ))
-                ) : filteredQuotes?.length === 0 ? (
+                ) : filteredData?.length === 0 ? (
                   <TableRow>
                     <TableCell colSpan={7} className="text-center py-12">
                       <FileText className="h-12 w-12 mx-auto text-muted-foreground mb-4" />
@@ -147,7 +156,7 @@ export default function QuotesListPage() {
                     </TableCell>
                   </TableRow>
                 ) : (
-                  filteredQuotes?.map((quote) => {
+                  filteredData?.map((quote: any) => {
                     const statusConfig = STATUS_CONFIG[quote.status] || STATUS_CONFIG.draft;
                     const StatusIcon = statusConfig.icon;
                     return (

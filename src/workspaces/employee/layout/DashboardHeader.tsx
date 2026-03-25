@@ -1,4 +1,4 @@
-import { Bell, LogOut, User, Menu } from "lucide-react";
+import { LogOut, User, Menu } from "lucide-react";
 import { useState } from "react";
 import { Button } from "@/ui/shadcn/button";
 import { Input } from "@/ui/shadcn/input";
@@ -7,6 +7,7 @@ import { useAuth } from "@/core/auth/useAuth";
 import { useNavigate, useParams } from "react-router-dom";
 import { RoleBadge } from "@/ui/shadcn/RoleBadge";
 import { tenantAppPath } from "@/core/utils/routes";
+import { NotificationBell } from "@/ui/notification-bell";
 
 export function DashboardHeader() {
   const { user, role, signOut } = useAuth();
@@ -40,10 +41,7 @@ export function DashboardHeader() {
         {role && <RoleBadge role={role} />}
 
         {/* Notifications */}
-        <Button variant="ghost" size="icon" className="relative">
-          <Bell className="h-5 w-5" />
-          <span className="absolute top-1 right-1 h-2 w-2 bg-destructive rounded-full" />
-        </Button>
+        <NotificationBell />
 
         {/* Settings */}
         <Button variant="ghost" onClick={() => navigate(settingsPath)}>
@@ -61,9 +59,7 @@ export function DashboardHeader() {
       <div className="md:hidden ml-auto flex items-center gap-2">
 
         {/* small notif */}
-        <Button variant="ghost" size="icon">
-          <Bell className="h-5 w-5" />
-        </Button>
+        <NotificationBell />
 
         {/*menu on RIGHT */}
         <Button

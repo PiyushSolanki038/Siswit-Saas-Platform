@@ -5,6 +5,7 @@ import { useCallback, useMemo } from "react";
 import { useQuery, useQueryClient, useMutation } from "@tanstack/react-query";
 import { supabase } from "@/core/api/client";
 import { useOrganization } from "@/workspaces/organization/hooks/useOrganization";
+import { useCreateNotification } from "@/core/hooks/useCreateNotification";
 import type {
   PlanType,
   ResourceType,
@@ -37,6 +38,8 @@ interface UsePlanLimitsReturn {
   isResourceNearLimit: (resource: ResourceType) => boolean;
   /** Check if a resource is at its limit */
   isResourceAtLimit: (resource: ResourceType) => boolean;
+  /** Get effective limit including addons for a resource */
+  getEffectiveLimit: (resource: ResourceType) => number;
   /** Refresh usage data */
   refreshUsage: () => void;
 }
@@ -65,6 +68,7 @@ function mapLegacyPlanType(planType: string | null | undefined): PlanType {
 export function usePlanLimits(): UsePlanLimitsReturn {
   const { organization, subscription } = useOrganization();
   const queryClient = useQueryClient();
+  const { notify } = useCreateNotification();
 
   const organizationId = organization?.id ?? null;
   const planType: PlanType = mapLegacyPlanType(subscription?.plan_type) ?? mapLegacyPlanType(organization?.plan_type) ?? "foundation";
@@ -109,9 +113,26 @@ export function usePlanLimits(): UsePlanLimitsReturn {
         return { allowed: true, current_count: 0, max_allowed: 999999999, remaining: 999999999 };
       }
 
-      return data as unknown as PlanLimitCheckResult;
+      const result = data as unknown as PlanLimitCheckResult;
+
+      // Notify if usage > 80%
+      if (result.max_allowed > 0) {
+        const percent = (result.current_count / result.max_allowed) * 100;
+        if (percent >= 80 && organizationId && (organization as any)?.owner_id) {
+          notify({
+            userId: (organization as any).owner_id,
+            organizationId: organizationId,
+            type: percent >= 100 ? "plan_limit_reached" : "plan_limit_warning",
+            title: percent >= 100 ? "Plan Limit Reached" : "Plan Limit Warning",
+            message: `You are at ${percent.toFixed(0)}% of your ${resource} limit`,
+            link: "/organization/plans",
+          });
+        }
+      }
+
+      return result;
     },
-    [organizationId],
+    [organizationId, organization?.owner_id, notify],
   );
 
   const incrementUsage = useCallback(
@@ -202,6 +223,14 @@ export function usePlanLimits(): UsePlanLimitsReturn {
     void queryClient.invalidateQueries({ queryKey: ["organization_usage", organizationId] });
   }, [organizationId, queryClient]);
 
+  const getEffectiveLimit = useCallback(
+    (resource: ResourceType): number => {
+      const baseLimit = usage[resource]?.max_allowed ?? 0;
+      return baseLimit;
+    },
+    [usage]
+  );
+
   return {
     isLoading,
     planType,
@@ -212,6 +241,7 @@ export function usePlanLimits(): UsePlanLimitsReturn {
     getUsageForResource,
     isResourceNearLimit,
     isResourceAtLimit,
+    getEffectiveLimit,
     refreshUsage,
   };
 }
@@ -220,16 +250,17 @@ export function useUpgradePlan() {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: async ({ organizationId, newPlan }: { organizationId: string; newPlan: PlanType }) => {
-      const { data, error } = await supabase.rpc("upgrade_organization_plan" as any, {
+      const { data, error } = await (supabase.rpc as any)("upgrade_organization_plan", {
         p_organization_id: organizationId,
         p_new_plan: newPlan,
       });
       if (error) throw error;
       return data;
     },
-    onSuccess: () => {
+    onSuccess: (_data: unknown, variables: { organizationId: string; newPlan: PlanType }) => {
       queryClient.invalidateQueries({ queryKey: ["organization"] });
       queryClient.invalidateQueries({ queryKey: ["plan-limits"] });
+      queryClient.invalidateQueries({ queryKey: ["organization_usage", variables.organizationId] });
     },
   });
 }

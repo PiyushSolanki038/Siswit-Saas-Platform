@@ -188,26 +188,26 @@ export function getResourceLabel(resource: ResourceType): string {
 }
 
 export const ADD_ONS = {
-  extra_users_10: {
-    name: "10 Extra Users",
+  extra_contacts_500: {
+    name: "Extra Contacts",
     price: 499,
-    description: "Add 10 more user seats to your organization",
-    resource: "users" as const,
-    amount: 10,
+    description: "+500 contacts",
+    resource: "contacts" as const,
+    amount: 500,
   },
-  extra_storage_5gb: {
-    name: "5 GB Extra Storage",
-    price: 349,
-    description: "Add 5 GB of additional file storage",
-    resource: "storage_mb" as const,
-    amount: 5120,
+  extra_storage_10gb: {
+    name: "Extra Storage",
+    price: 299,
+    description: "+100 documents",
+    resource: "documents" as const,
+    amount: 100,
   },
-  extra_esignatures_50: {
-    name: "50 Extra E-Signatures",
-    price: 699,
-    description: "Add 50 more e-signature requests per month",
-    resource: "esignatures" as const,
-    amount: 50,
+  extra_api_calls_5000: {
+    name: "Extra API Calls",
+    price: 199,
+    description: "+5,000 API calls/day",
+    resource: "api_calls" as const,
+    amount: 5000,
   },
 } as const;
 

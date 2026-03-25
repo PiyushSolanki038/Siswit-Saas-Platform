@@ -6,6 +6,7 @@ import { supabase } from "@/core/api/client";
 import type { Database } from "@/core/api/types";
 import { useModuleScope } from "@/core/hooks/useModuleScope";
 import { usePlanLimits } from "@/core/hooks/usePlanLimits";
+import { useCreateNotification } from "@/core/hooks/useCreateNotification";
 import type {
   Account,
   Activity,
@@ -922,6 +923,7 @@ export function useCreateOpportunity() {
   const queryClient = useQueryClient();
   const { scope, tenantId, userId } = useModuleScope();
   const { checkLimit, incrementUsage } = usePlanLimits();
+  const { notify } = useCreateNotification();
 
   return useMutation({
     mutationFn: async (opportunity: Omit<Partial<Opportunity>, "id" | "created_at" | "updated_at" | "expected_revenue">) => {
@@ -972,9 +974,20 @@ export function useCreateOpportunity() {
 
       return mapOpportunity(data as OpportunityRow);
     },
-    onSuccess: () => {
+    onSuccess: (data) => {
       queryClient.invalidateQueries({ queryKey: ["opportunities"] });
       toast.success("Opportunity created successfully");
+
+      if (tenantId) {
+        notify({
+          userId: data.owner_id || userId || "",
+          organizationId: tenantId,
+          type: "member_joined", // Placeholder for opportunity_created
+          title: "New Opportunity",
+          message: `${data.name} added to pipeline`,
+          link: `/${tenantId}/app/crm/opportunities`,
+        });
+      }
     },
     onError: (error: unknown) => {
       toast.error("Error creating opportunity: " + getErrorMessage(error));

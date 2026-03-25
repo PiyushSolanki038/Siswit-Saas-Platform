@@ -14,6 +14,7 @@ import {
 import { useAuth } from "@/core/auth/useAuth";
 import { useAccounts, useContacts } from "@/modules/crm/hooks/useCRM";
 import { useCreateAutoDocument, useDocumentTemplates } from "@/modules/documents/hooks/useDocuments";
+import { useModuleScope } from "@/core/hooks/useModuleScope";
 import type { DocumentType } from "@/core/types/documents";
 import { toast } from "sonner";
 import {
@@ -27,6 +28,7 @@ import {
   Loader2,
   User,
 } from "lucide-react";
+import { FileUpload } from "@/ui/file-upload";
 
 const steps = [
   { id: 1, title: "Select Template", icon: FileText },
@@ -38,6 +40,7 @@ const DocumentCreatePage = () => {
   const navigate = useNavigate();
   const [searchParams] = useSearchParams();
   const { user } = useAuth();
+  const { organizationId } = useModuleScope();
   const { data: templates = [], isLoading: isTemplatesLoading } = useDocumentTemplates();
   const { data: accounts = [] } = useAccounts();
   const createDocumentMutation = useCreateAutoDocument();
@@ -55,7 +58,10 @@ const DocumentCreatePage = () => {
     effectiveDate: "",
     expiryDate: "",
     notes: "",
-  });
+    filePath: "",
+    fileName: "",
+    fileSize: "",
+  } as Record<string, string>);
 
   const { data: contacts = [] } = useContacts(formData.accountId || undefined);
 
@@ -138,6 +144,9 @@ const DocumentCreatePage = () => {
           expiryDate: formData.expiryDate || null,
           notes: formData.notes || null,
         }),
+        file_path: formData.filePath || undefined,
+        file_name: formData.fileName || undefined,
+        file_size: formData.fileSize ? parseInt(formData.fileSize) : undefined,
       });
 
       navigate(`/dashboard/documents/${createdDocument.id}/esign`);
@@ -308,6 +317,25 @@ const DocumentCreatePage = () => {
                   placeholder="Enter any additional notes or instructions"
                   value={formData.notes}
                   onChange={(event) => handleInputChange("notes", event.target.value)}
+                />
+              </div>
+
+              <div className="sm:col-span-2 border-t border-border pt-6 mt-2">
+                <FileUpload
+                  bucket="documents"
+                  organizationId={organizationId || ""}
+                  onUploadComplete={(result) => {
+                    handleInputChange("filePath", result.path);
+                    handleInputChange("fileName", result.name);
+                    handleInputChange("fileSize", result.size.toString());
+                  }}
+                  label="Attach File (Optional)"
+                  existingFile={formData.filePath ? { name: formData.fileName, url: "#" } : null}
+                  onDelete={() => {
+                    handleInputChange("filePath", "");
+                    handleInputChange("fileName", "");
+                    handleInputChange("fileSize", "");
+                  }}
                 />
               </div>
             </div>

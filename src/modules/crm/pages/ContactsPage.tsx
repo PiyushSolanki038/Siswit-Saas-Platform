@@ -23,6 +23,9 @@ import {
 } from "@/ui/shadcn/dropdown-menu";
 import { format } from "date-fns";
 import { PlanLimitBanner } from "@/ui/plan-limit-banner";
+import { ExportButton } from "@/ui/export-button";
+import { useSearch } from "@/core/hooks/useSearch";
+import { SearchBar } from "@/ui/search-bar";
 // Schema-aligned Interface
 export interface ContactRow {
   id: string;
@@ -43,6 +46,10 @@ export default function ContactsPage() {
   const updateContact = useUpdateContact();
   const deleteContact = useDeleteContact();
   const { canDelete } = useCRUD();
+
+  const { searchQuery, setSearchQuery, filteredData, resultCount, totalCount } = useSearch<ContactRow>(contacts as unknown as ContactRow[], {
+    searchFields: ["first_name", "last_name", "email", "phone"],
+  });
 
   const [dialogOpen, setDialogOpen] = useState(false);
   const [editingContact, setEditingContact] = useState<ContactRow | null>(null);
@@ -189,18 +196,26 @@ export default function ContactsPage() {
   return (
     <div className="space-y-6">
         <PlanLimitBanner resource="contacts" className="mb-4" />
-        <div>
-          <h1 className="text-3xl font-bold">Contacts</h1>
-          <p className="text-muted-foreground">Manage your contacts</p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Contacts</h1>
+            <p className="text-muted-foreground">Manage your contacts</p>
+          </div>
+        </div>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search contacts..." resultCount={resultCount} totalCount={totalCount} />
+            <ExportButton data={filteredData} filename="siswit-contacts" sheetName="Contacts" isLoading={isLoading} />
+          </div>
         </div>
 
         <DataTable
-          data={contacts as unknown as ContactRow[]}
+          data={filteredData as ContactRow[]}
           columns={columns}
           loading={isLoading}
           onAdd={openCreateDialog}
           addLabel="Add Contact"
-          searchPlaceholder="Search contacts..."
+          searchable={false}
         />
 
         <Dialog open={dialogOpen} onOpenChange={setDialogOpen}>

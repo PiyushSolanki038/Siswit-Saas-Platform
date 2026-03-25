@@ -42,6 +42,25 @@ import {
   DropdownMenuSeparator,
 } from "@/ui/shadcn/dropdown-menu";
 import { PlanLimitBanner } from "@/ui/plan-limit-banner";
+import { ExportButton } from "@/ui/export-button";
+import { useSearch } from "@/core/hooks/useSearch";
+import { SearchBar } from "@/ui/search-bar";
+import { FilterBar } from "@/ui/filter-bar";
+
+const ACCOUNT_FILTERS = [
+  {
+    key: "industry",
+    label: "Industry",
+    options: [
+      { label: "Technology", value: "Technology" },
+      { label: "Finance", value: "Finance" },
+      { label: "Healthcare", value: "Healthcare" },
+      { label: "Retail", value: "Retail" },
+      { label: "Manufacturing", value: "Manufacturing" },
+      { label: "Other", value: "Other" },
+    ],
+  },
+];
 
 // matches accounts table
 export interface AccountRow {
@@ -71,6 +90,11 @@ export default function AccountsPage() {
   const updateAccount = useUpdateAccount();
   const deleteAccount = useDeleteAccount();
   const { canDelete } = useCRUD();
+
+  const { searchQuery, setSearchQuery, activeFilters, setFilter, clearFilters, filteredData, resultCount, totalCount, filterDefs } = useSearch<AccountRow>(accounts as AccountRow[], {
+    searchFields: ["name", "industry", "website", "phone"],
+    filterDefs: ACCOUNT_FILTERS,
+  });
 
   // ui state
   const [dialogOpen, setDialogOpen] = useState(false);
@@ -262,20 +286,29 @@ export default function AccountsPage() {
   return (
     <div className="space-y-6">
         <PlanLimitBanner resource="accounts" className="mb-4" />
-        <div>
-          <h1 className="text-3xl font-bold">Accounts</h1>
-          <p className="text-muted-foreground">
-            Manage your customer accounts
-          </p>
+        <div className="flex items-center justify-between">
+          <div>
+            <h1 className="text-3xl font-bold">Accounts</h1>
+            <p className="text-muted-foreground">
+              Manage your customer accounts
+            </p>
+          </div>
+        </div>
+        <div className="flex flex-col gap-3">
+          <div className="flex items-center justify-between gap-3">
+            <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search accounts..." resultCount={resultCount} totalCount={totalCount} />
+            <ExportButton data={filteredData} filename="siswit-accounts" sheetName="Accounts" isLoading={isLoading} />
+          </div>
+          <FilterBar filters={filterDefs} activeFilters={activeFilters} onFilterChange={setFilter} onClearAll={clearFilters} />
         </div>
 
         <DataTable
-          data={accounts as AccountRow[]}
+          data={filteredData as AccountRow[]}
           columns={columns}
           loading={isLoading}
           onAdd={openCreateDialog}
           addLabel="Add Account"
-          searchPlaceholder="Search accounts..."
+          searchable={false}
         />
 
         {/* account form */}

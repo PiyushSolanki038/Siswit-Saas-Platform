@@ -40,8 +40,8 @@ function statusBadgeClass(status: string): string {
 }
 
 function getBarColor(percent: number): string {
-  if (percent >= 90) return "bg-destructive";
-  if (percent >= 75) return "bg-warning";
+  if (percent >= 80) return "bg-destructive";
+  if (percent >= 60) return "bg-warning";
   return "bg-primary";
 }
 

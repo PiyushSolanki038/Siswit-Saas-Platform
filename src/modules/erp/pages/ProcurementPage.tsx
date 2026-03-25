@@ -83,9 +83,26 @@ const STATUS_STYLES: Record<string, string> = {
   cancelled: "bg-red-100 text-red-700 border-red-200",
 };
 import { PlanLimitBanner } from "@/ui/plan-limit-banner";
+import { ExportButton } from "@/ui/export-button";
+import { useSearch } from "@/core/hooks/useSearch";
+import { SearchBar } from "@/ui/search-bar";
+import { FilterBar } from "@/ui/filter-bar";
+
+const PO_FILTERS = [
+  {
+    key: "status",
+    label: "Status",
+    options: [
+      { label: "Draft", value: "draft" },
+      { label: "Submitted", value: "submitted" },
+      { label: "Approved", value: "approved" },
+      { label: "Received", value: "received" },
+      { label: "Cancelled", value: "cancelled" },
+    ],
+  },
+];
 
 export default function ProcurementPage() {
-  const [searchTerm, setSearchTerm] = useState("");
   const [isSheetOpen, setIsSheetOpen] = useState(false);
 
   // State for managing Edit/Delete selections
@@ -196,10 +213,11 @@ export default function ProcurementPage() {
     setOrderToDelete(order); // This triggers the Alert Dialog to open
   };
 
-  const filteredOrders = orders?.filter((order) =>
-    (order.order_number || "").toLowerCase().includes(searchTerm.toLowerCase()) ||
-    order.accounts?.name?.toLowerCase().includes(searchTerm.toLowerCase())
-  );
+  // eslint-disable-next-line @typescript-eslint/no-explicit-any
+  const { searchQuery, setSearchQuery, activeFilters, setFilter, clearFilters, filteredData, resultCount, totalCount, filterDefs } = useSearch<any>(orders ?? [], {
+    searchFields: ["order_number", "status"],
+    filterDefs: PO_FILTERS,
+  });
 
   return (
     <div className="space-y-6">
@@ -213,7 +231,9 @@ export default function ProcurementPage() {
         </div>
 
         {/* EDIT/CREATE SHEET */}
-        <Sheet open={isSheetOpen} onOpenChange={(open) => { setIsSheetOpen(open); if (!open) setEditingOrder(null); }}>
+        <div className="flex items-center gap-2">
+          <ExportButton data={orders ?? []} filename="siswit-purchase-orders" sheetName="Purchase Orders" isLoading={isLoading} />
+          <Sheet open={isSheetOpen} onOpenChange={(open) => { setIsSheetOpen(open); if (!open) setEditingOrder(null); }}>
           <SheetTrigger asChild>
             <Button onClick={handleCreateClick} className="shadow-sm">
               <Plus className="h-4 w-4 mr-2" /> New Purchase Order
@@ -232,18 +252,16 @@ export default function ProcurementPage() {
               isLoading={upsertOrderMutation.isPending}
             />
           </SheetContent>
-        </Sheet>
+          </Sheet>
+        </div>
       </div>
 
-      {/* Search Input */}
-      <div className="relative max-w-sm">
-        <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
-        <Input
-          placeholder="Search Order # or Vendor..."
-          className="pl-9"
-          value={searchTerm}
-          onChange={(e) => setSearchTerm(e.target.value)}
-        />
+      <div className="flex flex-col gap-3">
+        <div className="flex items-center justify-between gap-3">
+          <SearchBar value={searchQuery} onChange={setSearchQuery} placeholder="Search orders..." resultCount={resultCount} totalCount={totalCount} />
+          <ExportButton data={filteredData} filename="siswit-purchase-orders" sheetName="Purchase Orders" isLoading={isLoading} />
+        </div>
+        <FilterBar filters={filterDefs} activeFilters={activeFilters} onFilterChange={setFilter} onClearAll={clearFilters} />
       </div>
 
       {/* DELETE ALERT DIALOG (The "Proper System") */}
@@ -284,7 +302,7 @@ export default function ProcurementPage() {
         <CardContent className="p-0">
           {isLoading ? (
             <div className="flex h-64 items-center justify-center"><Loader2 className="animate-spin text-primary" /></div>
-          ) : filteredOrders?.length === 0 ? (
+          ) : filteredData?.length === 0 ? (
             <div className="flex flex-col items-center justify-center py-12 text-muted-foreground">
               <Search className="h-10 w-10 mb-2 opacity-20" />
               <p>No orders found.</p>
@@ -302,7 +320,7 @@ export default function ProcurementPage() {
                 </TableRow>
               </TableHeader>
               <TableBody>
-                {filteredOrders?.map((order) => (
+                {filteredData?.map((order: any) => (
                   <TableRow key={order.id} className="group hover:bg-muted/5">
                     <TableCell className="font-mono font-medium">{order.order_number}</TableCell>
                     <TableCell>{order.accounts?.name || "Unknown"}</TableCell>

@@ -56,6 +56,7 @@ export interface ContractScan {
   id: string;
   contract_id: string;
   file_path?: string;
+  file_url?: string;
   file_name?: string;
   content_type?: string;
   file_size?: number;
