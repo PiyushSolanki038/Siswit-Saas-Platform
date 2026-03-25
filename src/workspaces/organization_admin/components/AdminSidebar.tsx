@@ -1,4 +1,4 @@
-import { useMemo } from "react";
+import { useMemo, useState } from "react";
 import { NavLink, useParams } from "react-router-dom";
 import {
   LayoutDashboard,
@@ -15,11 +15,14 @@ import {
   FileText,
   ShoppingBag,
   Truck,
+  Lock,
 } from "lucide-react";
 import { Button } from "@/ui/shadcn/button";
 import { cn } from "@/core/utils/utils";
 import { useAuth } from "@/core/auth/useAuth";
 import { useOrganization } from "@/workspaces/organization/hooks/useOrganization";
+import { usePlanLimits } from "@/core/hooks/usePlanLimits";
+import { UpgradePrompt } from "@/ui/upgrade-prompt";
 import { tenantAppPath } from "@/core/utils/routes";
 
 interface SidebarGroup {
@@ -47,7 +50,9 @@ export function AdminSidebar({
 }: AdminSidebarProps) {
   const { organization, subscription } = useOrganization();
   const { signOut } = useAuth();
+  const { planType } = usePlanLimits();
   const { tenantSlug = "" } = useParams<{ tenantSlug: string }>();
+  const [upgradeOpen, setUpgradeOpen] = useState(false);
 
   const primaryColor = organization?.primary_color || "var(--primary)";
 
@@ -116,7 +121,7 @@ export function AdminSidebar({
   };
 
   const organizationName = organization?.name || "Admin Panel";
-  const initials = organizationName.split(" ").map(n => n[0]).join("").substring(0, 2).toUpperCase();
+  const initials = organizationName.split(" ").map((n: string) => n[0]).join("").substring(0, 2).toUpperCase();
 
   return (
     <aside
@@ -165,7 +170,29 @@ export function AdminSidebar({
             <nav className="space-y-1">
               {group.items.map((item) => {
                 const Icon = item.icon;
-                if (item.enabled === false) return null;
+                const isLocked = item.enabled === false;
+
+                if (isLocked) {
+                  return (
+                    <button
+                      key={item.href}
+                      onClick={() => setUpgradeOpen(true)}
+                      className={cn(
+                        "flex items-center gap-3 px-3 py-2 rounded-xl transition-all group relative w-full text-left",
+                        "text-muted-foreground/40 hover:bg-muted/30 cursor-pointer opacity-50 hover:opacity-70",
+                        collapsed && "justify-center px-0"
+                      )}
+                    >
+                      <Icon className="h-4 w-4 shrink-0" />
+                      {!collapsed && (
+                        <>
+                          <span className="text-sm font-medium flex-1">{item.label}</span>
+                          <Lock className="h-3 w-3 text-muted-foreground/50" />
+                        </>
+                      )}
+                    </button>
+                  );
+                }
 
                 return (
                   <NavLink
@@ -232,6 +259,13 @@ export function AdminSidebar({
           {!collapsed && <span>Sign Out</span>}
         </Button>
       </div>
+
+      {/* Upgrade Modal */}
+      <UpgradePrompt
+        open={upgradeOpen}
+        onOpenChange={setUpgradeOpen}
+        currentPlan={planType}
+      />
     </aside>
   );
 }

@@ -258,7 +258,7 @@ const Dashboard = () => {
 
   return (
     <div className="min-h-screen">
-      <main className="pt-16 space-y-8">
+      <main className=" space-y-8">
 
         {/* HERO */}
         <section className="container mx-auto px-4 md:px-6">
@@ -273,8 +273,8 @@ const Dashboard = () => {
             </div>
 
             <div className="flex flex-col sm:flex-row gap-2 w-full md:w-auto">
-              <Button 
-                variant="outline" 
+              <Button
+                variant="outline"
                 className="w-full sm:w-[140px]"
                 onClick={() => navigate(tenantAppPath(tenantSlug, "alerts"))}
               >

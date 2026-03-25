@@ -21,6 +21,7 @@ import {
   TenantAdminRoute,
 } from "@/core/auth/components/ProtectedRoute";
 import { TenantSlugGuard } from "@/core/auth/components/TenantSlugGuard";
+import { ModuleGate } from "@/core/auth/components/ModuleGate";
 import { PlatformAdminLayout } from "@/workspaces/platform/layout/PlatformAdminLayout";
 import { TenantAdminLayout } from "@/workspaces/organization_admin/layout/TenantAdminLayout";
 import { CustomerPortalLayout } from "@/workspaces/portal/layout/CustomerPortalLayout";
@@ -329,84 +330,96 @@ function AppRoutes() {
           <Route path="dashboard" element={<TenantWorkspaceDashboard />} />
           <Route path="analytics" element={<Dashboard />} />
 
-          <Route path="cpq" element={<CPQDashboard />} />
-          <Route path="cpq/products" element={<ProductsPage />} />
-          <Route path="cpq/quotes" element={<QuotesListPage />} />
-          <Route path="cpq/quotes/new" element={<QuoteBuilderPage />} />
-          <Route path="cpq/quotes/:id" element={<QuoteDetailPage />} />
-          <Route path="cpq/quotes/:id/edit" element={<QuoteBuilderPage />} />
+          <Route path="cpq" element={<ModuleGate module="cpq"><CPQDashboard /></ModuleGate>} />
+          <Route path="cpq/products" element={<ModuleGate module="cpq"><ProductsPage /></ModuleGate>} />
+          <Route path="cpq/quotes" element={<ModuleGate module="cpq"><QuotesListPage /></ModuleGate>} />
+          <Route path="cpq/quotes/new" element={<ModuleGate module="cpq"><QuoteBuilderPage /></ModuleGate>} />
+          <Route path="cpq/quotes/:id" element={<ModuleGate module="cpq"><QuoteDetailPage /></ModuleGate>} />
+          <Route path="cpq/quotes/:id/edit" element={<ModuleGate module="cpq"><QuoteBuilderPage /></ModuleGate>} />
 
-          <Route path="clm" element={<CLMDashboard />} />
-          <Route path="clm/contracts" element={<ContractsListPage />} />
-          <Route path="clm/contracts/new" element={<ContractBuilderPage />} />
-          <Route path="clm/contracts/:id" element={<ContractDetailPage />} />
-          <Route path="clm/contracts/:id/edit" element={<ContractBuilderPage />} />
-          <Route path="clm/templates" element={<TemplatesPage />} />
-          <Route path="clm/scan" element={<ContractScanPage />} />
-          <Route path="clm/esign/:id" element={<ESignaturePage />} />
+          <Route path="clm" element={<ModuleGate module="clm"><CLMDashboard /></ModuleGate>} />
+          <Route path="clm/contracts" element={<ModuleGate module="clm"><ContractsListPage /></ModuleGate>} />
+          <Route path="clm/contracts/new" element={<ModuleGate module="clm"><ContractBuilderPage /></ModuleGate>} />
+          <Route path="clm/contracts/:id" element={<ModuleGate module="clm"><ContractDetailPage /></ModuleGate>} />
+          <Route path="clm/contracts/:id/edit" element={<ModuleGate module="clm"><ContractBuilderPage /></ModuleGate>} />
+          <Route path="clm/templates" element={<ModuleGate module="clm"><TemplatesPage /></ModuleGate>} />
+          <Route path="clm/scan" element={<ModuleGate module="clm"><ContractScanPage /></ModuleGate>} />
+          <Route path="clm/esign/:id" element={<ModuleGate module="clm"><ESignaturePage /></ModuleGate>} />
 
-          <Route path="crm" element={<CRMLayout />} />
-          <Route path="crm/leads" element={<LeadsPage />} />
-          <Route path="crm/pipeline" element={<PipelinePage />} />
-          <Route path="crm/accounts" element={<AccountsPage />} />
-          <Route path="crm/contacts" element={<ContactsPage />} />
-          <Route path="crm/opportunities" element={<OpportunitiesPage />} />
-          <Route path="crm/activities" element={<ActivitiesPage />} />
+          <Route path="crm" element={<ModuleGate module="crm"><CRMLayout /></ModuleGate>} />
+          <Route path="crm/leads" element={<ModuleGate module="crm"><LeadsPage /></ModuleGate>} />
+          <Route path="crm/pipeline" element={<ModuleGate module="crm"><PipelinePage /></ModuleGate>} />
+          <Route path="crm/accounts" element={<ModuleGate module="crm"><AccountsPage /></ModuleGate>} />
+          <Route path="crm/contacts" element={<ModuleGate module="crm"><ContactsPage /></ModuleGate>} />
+          <Route path="crm/opportunities" element={<ModuleGate module="crm"><OpportunitiesPage /></ModuleGate>} />
+          <Route path="crm/activities" element={<ModuleGate module="crm"><ActivitiesPage /></ModuleGate>} />
 
           <Route
             path="documents"
             element={
-              <DocumentsRealtimeProvider>
-                <DocumentsDashboard />
-              </DocumentsRealtimeProvider>
+              <ModuleGate module="documents">
+                <DocumentsRealtimeProvider>
+                  <DocumentsDashboard />
+                </DocumentsRealtimeProvider>
+              </ModuleGate>
             }
           />
           <Route
             path="documents/create"
             element={
-              <DocumentsRealtimeProvider>
-                <DocumentCreatePage />
-              </DocumentsRealtimeProvider>
+              <ModuleGate module="documents">
+                <DocumentsRealtimeProvider>
+                  <DocumentCreatePage />
+                </DocumentsRealtimeProvider>
+              </ModuleGate>
             }
           />
           <Route
             path="documents/templates"
             element={
-              <DocumentsRealtimeProvider>
-                <DocumentTemplatesPage />
-              </DocumentsRealtimeProvider>
+              <ModuleGate module="documents">
+                <DocumentsRealtimeProvider>
+                  <DocumentTemplatesPage />
+                </DocumentsRealtimeProvider>
+              </ModuleGate>
             }
           />
           <Route
             path="documents/history"
             element={
-              <DocumentsRealtimeProvider>
-                <DocumentHistoryPage />
-              </DocumentsRealtimeProvider>
+              <ModuleGate module="documents">
+                <DocumentsRealtimeProvider>
+                  <DocumentHistoryPage />
+                </DocumentsRealtimeProvider>
+              </ModuleGate>
             }
           />
           <Route
             path="documents/pending"
             element={
-              <DocumentsRealtimeProvider>
-                <PendingSignaturesPage />
-              </DocumentsRealtimeProvider>
+              <ModuleGate module="documents">
+                <DocumentsRealtimeProvider>
+                  <PendingSignaturesPage />
+                </DocumentsRealtimeProvider>
+              </ModuleGate>
             }
           />
           <Route
             path="documents/:id/esign"
             element={
-              <DocumentsRealtimeProvider>
-                <DocumentESignPage />
-              </DocumentsRealtimeProvider>
+              <ModuleGate module="documents">
+                <DocumentsRealtimeProvider>
+                  <DocumentESignPage />
+                </DocumentsRealtimeProvider>
+              </ModuleGate>
             }
           />
 
-          <Route path="erp" element={<ERPDashboard />} />
-          <Route path="erp/inventory" element={<InventoryPage />} />
-          <Route path="erp/procurement" element={<ProcurementPage />} />
-          <Route path="erp/production" element={<ProductionPage />} />
-          <Route path="erp/finance" element={<FinancePage />} />
+          <Route path="erp" element={<ModuleGate module="erp"><ERPDashboard /></ModuleGate>} />
+          <Route path="erp/inventory" element={<ModuleGate module="erp"><InventoryPage /></ModuleGate>} />
+          <Route path="erp/procurement" element={<ModuleGate module="erp"><ProcurementPage /></ModuleGate>} />
+          <Route path="erp/production" element={<ModuleGate module="erp"><ProductionPage /></ModuleGate>} />
+          <Route path="erp/finance" element={<ModuleGate module="erp"><FinancePage /></ModuleGate>} />
           <Route path="users" element={<OrganizationUsersPage />} />
           <Route path="subscription" element={<OrganizationSubscriptionPage />} />
           <Route path="invitations" element={<OrganizationInvitationsPage />} />

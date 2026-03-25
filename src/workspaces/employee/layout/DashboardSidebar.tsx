@@ -20,13 +20,22 @@ import {
   BarChart3,
   DollarSign,
   LogOut,
+  Lock,
 } from "lucide-react";
 import { cn } from "@/core/utils/utils";
 import { Button } from "@/ui/shadcn/button";
-import { useMemo, type ComponentType } from "react";
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+  DialogDescription,
+} from "@/ui/shadcn/dialog";
+import { useMemo, useState, type ComponentType } from "react";
 import { tenantAppPath, tenantDashboardPath } from "@/core/utils/routes";
 import { useAuth } from "@/core/auth/useAuth";
 import { useOrganization } from "@/workspaces/organization/hooks/useOrganization";
+import type { ModuleType } from "@/core/types/modules";
 
 type SidebarLink = {
   title: string;
@@ -40,12 +49,14 @@ type SidebarSection =
     icon: ComponentType<{ className?: string }>;
     path: string;
     items?: undefined;
+    moduleId?: ModuleType;
   }
   | {
     title: string;
     items: SidebarLink[];
     icon?: undefined;
     path?: undefined;
+    moduleId?: ModuleType;
   };
 
 const buildMenuItems = (tenantSlug: string): SidebarSection[] => [
@@ -56,6 +67,7 @@ const buildMenuItems = (tenantSlug: string): SidebarSection[] => [
   },
   {
     title: "CRM",
+    moduleId: "crm" as ModuleType,
     items: [
       { title: "Dashboard", icon: LayoutDashboard, path: tenantAppPath(tenantSlug, "crm") },
       { title: "Leads", icon: Users, path: tenantAppPath(tenantSlug, "crm/leads") },
@@ -68,6 +80,7 @@ const buildMenuItems = (tenantSlug: string): SidebarSection[] => [
   },
   {
     title: "CPQ",
+    moduleId: "cpq" as ModuleType,
     items: [
       { title: "Dashboard", icon: LayoutDashboard, path: tenantAppPath(tenantSlug, "cpq") },
       { title: "Products", icon: Package, path: tenantAppPath(tenantSlug, "cpq/products") },
@@ -76,6 +89,7 @@ const buildMenuItems = (tenantSlug: string): SidebarSection[] => [
   },
   {
     title: "CLM",
+    moduleId: "clm" as ModuleType,
     items: [
       { title: "Dashboard", icon: LayoutDashboard, path: tenantAppPath(tenantSlug, "clm") },
       { title: "Contracts", icon: FileSignature, path: tenantAppPath(tenantSlug, "clm/contracts") },
@@ -84,6 +98,7 @@ const buildMenuItems = (tenantSlug: string): SidebarSection[] => [
   },
   {
     title: "Documents",
+    moduleId: "documents" as ModuleType,
     items: [
       { title: "All Documents", icon: FileStack, path: tenantAppPath(tenantSlug, "documents") },
       { title: "Create Document", icon: FilePlus, path: tenantAppPath(tenantSlug, "documents/create") },
@@ -94,6 +109,7 @@ const buildMenuItems = (tenantSlug: string): SidebarSection[] => [
   },
   {
     title: "ERP",
+    moduleId: "erp" as ModuleType,
     items: [
       { title: "Dashboard", icon: LayoutDashboard, path: tenantAppPath(tenantSlug, "erp") },
       { title: "Inventory", icon: Package, path: tenantAppPath(tenantSlug, "erp/inventory") },
@@ -111,12 +127,13 @@ interface DashboardSidebarProps {
 }
 
 export function DashboardSidebar({ collapsed = false, onCollapseToggle, className }: DashboardSidebarProps) {
-  const { organization } = useOrganization();
+  const { organization, hasModule } = useOrganization();
   const { signOut } = useAuth();
   const { tenantSlug = "" } = useParams<{ tenantSlug: string }>();
   const menuItems = useMemo(() => buildMenuItems(tenantSlug), [tenantSlug]);
   const settingsPath = tenantAppPath(tenantSlug, "settings");
   const primaryColor = organization?.primary_color || "var(--primary)";
+  const [lockedOpen, setLockedOpen] = useState(false);
 
   const handleSignOut = async () => {
     await signOut();
@@ -165,86 +182,112 @@ export function DashboardSidebar({ collapsed = false, onCollapseToggle, classNam
 
       {/* Navigation */}
       <nav className="flex-1 overflow-y-auto pt-6 px-3 space-y-6 scrollbar-none">
-        {menuItems.map((section, idx) => (
-          <div key={idx} className="space-y-1.5">
-            {"path" in section && section.path ? (
-              <NavLink
-                to={section.path}
-                end
-                className={({ isActive }) =>
-                  cn(
-                    "flex items-center gap-3 px-3 py-2 rounded-xl transition-all group relative",
-                    isActive
-                      ? "bg-primary/10 text-primary"
-                      : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                    collapsed && "justify-center px-0"
-                  )
-                }
-                style={({ isActive }) => ({
-                  backgroundColor: isActive ? `${primaryColor}15` : undefined,
-                  color: isActive ? primaryColor : undefined,
-                })}
-              >
-                {({ isActive }) => (
-                  <>
-                    <section.icon className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-110")} />
-                    {!collapsed && <span className="text-sm font-medium">{section.title}</span>}
-                    {isActive && !collapsed && (
-                      <div
-                        className="absolute right-2 w-1 h-4 rounded-full"
-                        style={{ backgroundColor: primaryColor }}
-                      />
-                    )}
-                  </>
-                )}
-              </NavLink>
-            ) : (
-              <>
-                {!collapsed && (
-                  <h3 className="px-3 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-[0.2em] mb-2">
-                    {section.title}
-                  </h3>
-                )}
+        {menuItems.map((section, idx) => {
+          const isLocked = section.moduleId ? !hasModule(section.moduleId) : false;
 
-                <div className="space-y-1">
-                  {section.items?.map((item) => (
-                    <NavLink
-                      key={item.path}
-                      to={item.path}
-                      end
-                      className={({ isActive }) =>
-                        cn(
-                          "flex items-center gap-3 px-3 py-2 rounded-xl transition-all group relative",
-                          isActive
-                            ? "bg-primary/10 text-primary"
-                            : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
-                          collapsed && "justify-center px-0"
-                        )
-                      }
-                      style={({ isActive }) => ({
-                        backgroundColor: isActive ? `${primaryColor}15` : undefined,
-                        color: isActive ? primaryColor : undefined,
-                      })}
-                    >
-                      {({ isActive }) => (
-                        <>
-                          <item.icon className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-110")} />
-                          {!collapsed && <span className="text-sm font-medium">{item.title}</span>}
-                          {isActive && !collapsed && (
-                            <div
-                              className="absolute right-2 w-1 h-4 rounded-full"
-                              style={{ backgroundColor: primaryColor }}
-                            />
-                          )}
-                        </>
+          return (
+            <div key={idx} className="space-y-1.5">
+              {"path" in section && section.path ? (
+                <NavLink
+                  to={section.path}
+                  end
+                  className={({ isActive }) =>
+                    cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-xl transition-all group relative",
+                      isActive
+                        ? "bg-primary/10 text-primary"
+                        : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                      collapsed && "justify-center px-0"
+                    )
+                  }
+                  style={({ isActive }) => ({
+                    backgroundColor: isActive ? `${primaryColor}15` : undefined,
+                    color: isActive ? primaryColor : undefined,
+                  })}
+                >
+                  {({ isActive }) => (
+                    <>
+                      <section.icon className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-110")} />
+                      {!collapsed && <span className="text-sm font-medium">{section.title}</span>}
+                      {isActive && !collapsed && (
+                        <div
+                          className="absolute right-2 w-1 h-4 rounded-full"
+                          style={{ backgroundColor: primaryColor }}
+                        />
                       )}
-                    </NavLink>
-                  ))}
-                </div>
-              </>
-            )}
-          </div>
-        ))}
+                    </>
+                  )}
+                </NavLink>
+              ) : isLocked ? (
+                /* LOCKED MODULE SECTION */
+                <>
+                  {!collapsed && (
+                    <h3 className="px-3 text-[10px] font-bold text-muted-foreground/30 uppercase tracking-[0.2em] mb-2 flex items-center gap-1.5">
+                      {section.title}
+                      <Lock className="h-2.5 w-2.5" />
+                    </h3>
+                  )}
+                  <button
+                    onClick={() => setLockedOpen(true)}
+                    className={cn(
+                      "flex items-center gap-3 px-3 py-2 rounded-xl transition-all w-full text-left",
+                      "text-muted-foreground/30 hover:bg-muted/20 cursor-pointer opacity-50 hover:opacity-70",
+                      collapsed && "justify-center px-0"
+                    )}
+                  >
+                    <Lock className="h-4 w-4 shrink-0" />
+                    {!collapsed && <span className="text-sm font-medium">Upgrade to unlock</span>}
+                  </button>
+                </>
+              ) : (
+                /* NORMAL MODULE SECTION */
+                <>
+                  {!collapsed && (
+                    <h3 className="px-3 text-[10px] font-bold text-muted-foreground/60 uppercase tracking-[0.2em] mb-2">
+                      {section.title}
+                    </h3>
+                  )}
+
+                  <div className="space-y-1">
+                    {section.items?.map((item) => (
+                      <NavLink
+                        key={item.path}
+                        to={item.path}
+                        end
+                        className={({ isActive }) =>
+                          cn(
+                            "flex items-center gap-3 px-3 py-2 rounded-xl transition-all group relative",
+                            isActive
+                              ? "bg-primary/10 text-primary"
+                              : "text-muted-foreground hover:bg-muted/50 hover:text-foreground",
+                            collapsed && "justify-center px-0"
+                          )
+                        }
+                        style={({ isActive }) => ({
+                          backgroundColor: isActive ? `${primaryColor}15` : undefined,
+                          color: isActive ? primaryColor : undefined,
+                        })}
+                      >
+                        {({ isActive }) => (
+                          <>
+                            <item.icon className={cn("h-4 w-4 shrink-0 transition-transform group-hover:scale-110")} />
+                            {!collapsed && <span className="text-sm font-medium">{item.title}</span>}
+                            {isActive && !collapsed && (
+                              <div
+                                className="absolute right-2 w-1 h-4 rounded-full"
+                                style={{ backgroundColor: primaryColor }}
+                              />
+                            )}
+                          </>
+                        )}
+                      </NavLink>
+                    ))}
+                  </div>
+                </>
+              )}
+            </div>
+          );
+        })}
       </nav>
 
       {/* Footer */}
@@ -281,7 +324,30 @@ export function DashboardSidebar({ collapsed = false, onCollapseToggle, classNam
           {!collapsed && <span>Sign Out</span>}
         </Button>
       </div>
+
+      {/* Locked Module Popup */}
+      <Dialog open={lockedOpen} onOpenChange={setLockedOpen}>
+        <DialogContent className="max-w-sm">
+          <DialogHeader>
+            <div className="mx-auto w-14 h-14 rounded-2xl bg-orange-500/10 border border-orange-500/20 flex items-center justify-center mb-3">
+              <Lock className="w-6 h-6 text-orange-400" />
+            </div>
+            <DialogTitle className="text-center text-lg">Module Locked</DialogTitle>
+            <DialogDescription className="text-center text-sm leading-relaxed">
+              This module is not included in your organization's current plan. Please contact your{" "}
+              <span className="text-foreground font-semibold">organization admin</span>{" "}
+              to upgrade the subscription.
+            </DialogDescription>
+          </DialogHeader>
+          <Button
+            variant="outline"
+            className="w-full mt-2 rounded-xl"
+            onClick={() => setLockedOpen(false)}
+          >
+            Got it
+          </Button>
+        </DialogContent>
+      </Dialog>
     </aside>
   );
 }
-
