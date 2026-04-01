@@ -42,11 +42,10 @@ export function usePlatformDashboard() {
 
       // Map plan types to MRR values for platform estimation
       const planPricing: Record<string, number> = {
-        'starter': 250,
-        'professional': 1000,
-        'enterprise': 5000,
-        'business': 2500,
-        'standard': 500,
+        'foundation': 799,
+        'growth': 1399,
+        'commercial': 2299,
+        'enterprise': 3799,
         'free': 0
       };
 
@@ -68,7 +67,7 @@ export function usePlatformDashboard() {
       const recentOrganizations: PlatformRecentOrganization[] = (organizationsData.data || []).map(org => ({
         name: org.name || "Unnamed Organization",
         slug: org.slug || "",
-        plan: "Starter",
+        plan: "Foundation",
         status: org.status || "active",
         users: org.max_users || 0
       }));

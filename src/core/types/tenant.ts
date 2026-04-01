@@ -24,7 +24,7 @@ export type TenantStatus = "active" | "suspended" | "cancelled" | "trial";
 /**
  * Subscription plan types
  */
-export type PlanType = "starter" | "professional" | "enterprise";
+export type PlanType = "foundation" | "growth" | "commercial" | "enterprise";
 
 /**
  * Tenant subscription - tracks which modules are enabled for a tenant

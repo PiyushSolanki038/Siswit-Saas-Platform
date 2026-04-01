@@ -20,8 +20,7 @@ import {
   getUpgradePlanFor,
   ADD_ONS,
 } from "@/core/utils/plan-limits";
-import { useUpgradePlan } from "@/core/hooks/usePlanLimits";
-import { useModuleScope } from "@/core/hooks/useModuleScope";
+import { useSubscription } from "@/core/hooks/useSubscription";
 import { toast } from "sonner";
 
 interface UpgradePromptProps {
@@ -72,33 +71,21 @@ export function UpgradePrompt({
   triggeredByResource,
 }: UpgradePromptProps) {
   const recommendedPlan = getUpgradePlanFor(currentPlan);
-  const { organizationId } = useModuleScope();
-  const upgradePlan = useUpgradePlan();
+  const { initiateCheckout, isCheckoutPending } = useSubscription();
 
-  const handleUpgrade = (plan: PlanType) => {
+  const handleUpgrade = async (plan: PlanType) => {
     if (plan === "enterprise") {
       toast.success("Our sales team will contact you shortly.");
       onOpenChange(false);
       return;
     }
 
-    if (!organizationId) {
-      toast.error("Organization context missing.");
-      return;
+    try {
+      await initiateCheckout(plan);
+      onOpenChange(false);
+    } catch {
+      // Error toast is handled inside useSubscription
     }
-
-    upgradePlan.mutate(
-      { organizationId, newPlan: plan },
-      {
-        onSuccess: () => {
-          toast.success(`Successfully upgraded to ${PLAN_NAMES[plan]} Plan!`);
-          onOpenChange(false);
-        },
-        onError: (err) => {
-          toast.error(`Upgrade failed: ${err.message}`);
-        },
-      }
-    );
   };
 
   return (
@@ -161,9 +148,9 @@ export function UpgradePrompt({
                       className={`w-full ${isRecommended ? "" : "variant-outline"}`}
                       variant={isRecommended ? "default" : "outline"}
                       onClick={() => handleUpgrade(plan)}
-                      disabled={upgradePlan.isPending}
+                      disabled={isCheckoutPending}
                     >
-                      {upgradePlan.isPending && upgradePlan.variables?.newPlan === plan ? (
+                      {isCheckoutPending ? (
                         <Loader2 className="mr-2 h-4 w-4 animate-spin" />
                       ) : null}
                       {plan === "enterprise" ? "Contact Sales" : "Upgrade"}

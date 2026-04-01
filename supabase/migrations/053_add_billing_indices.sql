@@ -7,9 +7,8 @@ CREATE INDEX IF NOT EXISTS idx_organization_memberships_org_id ON public.organiz
 CREATE INDEX IF NOT EXISTS idx_organization_subscriptions_org_id ON public.organization_subscriptions(organization_id);
 
 -- Improve billing info lookups
-CREATE INDEX IF NOT EXISTS idx_organization_billing_org_id ON public.organization_billing(organization_id);
+CREATE INDEX IF NOT EXISTS idx_billing_customers_org_id ON public.billing_customers(organization_id);
 
--- Improve usage lookups
--- Note: organization_usage already exists as a table or is handled via RPC, but indices on the underlying tables help.
--- If there's a specific table tracking resource counts, we should index it too.
--- For now, these are the primary ones for the Subscription page.
+-- Improve usage and limit lookups
+CREATE INDEX IF NOT EXISTS idx_plan_limits_org_id ON public.plan_limits(organization_id);
+CREATE INDEX IF NOT EXISTS idx_usage_tracking_org_id ON public.usage_tracking(organization_id);

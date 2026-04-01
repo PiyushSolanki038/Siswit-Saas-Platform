@@ -38,7 +38,7 @@ CREATE TABLE tenants (
     name TEXT NOT NULL,
     slug TEXT NOT NULL UNIQUE,
     status TEXT NOT NULL DEFAULT 'trial' CHECK (status IN ('active', 'suspended', 'cancelled', 'trial')),
-    plan_type TEXT NOT NULL DEFAULT 'starter' CHECK (plan_type IN ('starter', 'professional', 'enterprise')),
+    plan_type TEXT NOT NULL DEFAULT 'foundation' CHECK (plan_type IN ('foundation', 'growth', 'commercial', 'enterprise')),
     
     -- Company details
     company_name TEXT,
@@ -90,7 +90,7 @@ CREATE TABLE tenant_subscriptions (
     module_documents BOOLEAN DEFAULT true,
     
     -- Plan details
-    plan_type TEXT NOT NULL DEFAULT 'starter',
+    plan_type TEXT NOT NULL DEFAULT 'foundation',
     status TEXT NOT NULL DEFAULT 'trial' CHECK (status IN ('trial', 'active', 'suspended', 'cancelled', 'past_due')),
     
     -- Billing

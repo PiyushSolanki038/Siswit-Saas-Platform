@@ -3,6 +3,7 @@ import { Outlet } from "react-router-dom";
 import { Sheet, SheetContent, SheetTitle, SheetDescription } from "@/ui/shadcn/sheet";
 import { OrganizationSidebar } from "@/workspaces/organization/components/OrganizationSidebar";
 import { OrganizationTopBar } from "@/workspaces/organization/components/OrganizationTopBar";
+import { TrialBanner } from "@/ui/trial-banner";
 import { useOrganization } from "@/workspaces/organization/hooks/useOrganization";
 import { cn } from "@/core/utils/utils";
 
@@ -38,6 +39,7 @@ export default function OrganizationOwnerLayout() {
         />
 
         <div className="flex min-w-0 flex-1 flex-col overflow-hidden bg-background/20 backdrop-blur-3xl">
+          <TrialBanner />
           <OrganizationTopBar onOpenSidebar={() => setSidebarOpen(true)} />
           <main className="flex-1 overflow-y-auto custom-scrollbar p-6 lg:p-8 bg-muted/0">
             <div className="mx-auto max-w-7xl animate-in fade-in slide-in-from-bottom-4 duration-700">

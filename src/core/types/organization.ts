@@ -39,6 +39,15 @@ export interface OrganizationSubscription {
   module_erp: boolean;
   module_documents: boolean;
   features: Record<string, boolean>;
+  is_trial?: boolean;
+  trial_start_date?: string | null;
+  trial_end_date?: string | null;
+  razorpay_subscription_id?: string | null;
+  razorpay_plan_id?: string | null;
+  subscription_start_date?: string | null;
+  subscription_end_date?: string | null;
+  cancelled_at?: string | null;
+  cancel_reason?: string | null;
   created_at: string;
   updated_at: string;
 }

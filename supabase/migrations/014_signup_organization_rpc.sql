@@ -29,7 +29,7 @@ BEGIN
       INSERT INTO public.organizations (
         name, slug, org_code, owner_user_id, status, plan_type, created_at, updated_at
       ) VALUES (
-        p_org_name, v_slug, v_code, p_user_id, 'trial', 'starter', NOW(), NOW()
+        p_org_name, v_slug, v_code, p_user_id, 'trial', 'foundation', NOW(), NOW()
       )
       RETURNING id INTO v_org_id;
 
@@ -51,7 +51,7 @@ BEGIN
     module_crm, module_cpq, module_documents, module_clm, module_erp,
     created_at, updated_at
   ) VALUES (
-    v_org_id, 'starter', 'trial',
+    v_org_id, 'foundation', 'trial',
     true, true, true, false, false,
     NOW(), NOW()
   );

@@ -1,13 +1,14 @@
 import { ALL_MODULES, type ModuleType } from "@/core/types/modules";
 
-export type ModulePlanType = "starter" | "professional" | "enterprise";
+export type ModulePlanType = "foundation" | "growth" | "enterprise" | "commercial";
 
 type ModuleFlagKey = `module_${ModuleType}`;
 type ModuleFlags = Partial<Record<ModuleFlagKey, boolean>> | null | undefined;
 
 export const PLAN_MODULES: Record<ModulePlanType, ModuleType[]> = {
-  starter: ["crm", "cpq", "documents"],
-  professional: ["crm", "cpq", "clm", "documents"],
+  foundation: ["crm", "cpq", "documents"],
+  growth: ["crm", "cpq", "clm", "documents"],
+  commercial: ["crm", "cpq", "clm", "erp", "documents"],
   enterprise: ["crm", "cpq", "clm", "erp", "documents"],
 };
 
